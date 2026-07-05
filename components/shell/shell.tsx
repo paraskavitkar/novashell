@@ -2,7 +2,7 @@
 
 import { useCallback, useRef, useState } from 'react'
 import type { ContentItem, ShellApp } from '@/lib/client'
-import { isNative, nativeExit, nativeLaunch, nativeSetVolume } from '@/lib/native'
+import { isNative, nativeExit, nativeLaunch, nativeSetVolume, nativeTypeText } from '@/lib/native'
 import { useShellInput } from './gamepad-context'
 import { TopBar } from './top-bar'
 import { HomeScreen } from './home-screen'
