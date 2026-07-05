@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   createApp,
   deleteApp,
@@ -75,6 +75,14 @@ export function LibraryManager({
 
   const safeIndex = Math.min(listIndex, Math.max(0, editable.length - 1))
   const selected = editable[safeIndex]
+  const listRef = useRef<HTMLDivElement>(null)
+
+  // keep the focused row visible as the selection moves
+  useEffect(() => {
+    if (pane !== 'list') return
+    const el = listRef.current?.children[safeIndex] as HTMLElement | undefined
+    el?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+  }, [safeIndex, pane])
 
   function openForm(app: ShellApp | null) {
     setEditing(app)
@@ -205,7 +213,7 @@ export function LibraryManager({
 
       <div className="flex min-h-0 flex-1 gap-6 px-10 pb-6 pt-4 md:px-14">
         {/* app list */}
-        <div className="no-scrollbar flex w-full max-w-md flex-col gap-1.5 overflow-y-auto">
+        <div ref={listRef} className="no-scrollbar flex w-full max-w-md flex-col gap-1.5 overflow-y-auto">
           {editable.map((app, i) => {
             const isFocused = pane === 'list' && i === safeIndex
             return (

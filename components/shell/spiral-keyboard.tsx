@@ -39,6 +39,9 @@ export function SpiralKeyboard({ open, label, text, onType, onBackspace, onDone 
   const [sector, setSector] = useState<number | null>(null)
   const sectorRef = useRef<number | null>(null)
   sectorRef.current = sector
+  // true when the current sector was chosen by the stick (so idle stick may clear it);
+  // D-pad selections stick around until typed or changed
+  const stickOwnedRef = useRef(false)
 
   // read stick angle every frame to pick the active sector
   useEffect(() => {
@@ -61,8 +64,11 @@ export function SpiralKeyboard({ open, label, text, onType, onBackspace, onDone 
       if (x !== 0 || y !== 0) {
         const angle = Math.atan2(y, x) * (180 / Math.PI) // -180..180, 0 = right
         const idx = Math.round((angle + 90 + 360) / 45) % 8 // 0 = top, clockwise
+        stickOwnedRef.current = true
         if (sectorRef.current !== idx) setSector(idx)
-      } else if (sectorRef.current !== null) {
+      } else if (sectorRef.current !== null && stickOwnedRef.current) {
+        // only clear stick-driven selections; keep D-pad selections
+        stickOwnedRef.current = false
         setSector(null)
       }
       raf = requestAnimationFrame(loop)
@@ -100,9 +106,13 @@ export function SpiralKeyboard({ open, label, text, onType, onBackspace, onDone 
           return true
         // dpad rotates sector for keyboard users
         case 'left':
+        case 'up':
+          stickOwnedRef.current = false
           setSector((cur) => (cur === null ? 0 : (cur + 7) % 8))
           return true
         case 'right':
+        case 'down':
+          stickOwnedRef.current = false
           setSector((cur) => (cur === null ? 0 : (cur + 1) % 8))
           return true
         default:
