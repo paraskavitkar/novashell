@@ -119,34 +119,85 @@ export function SpiralKeyboard({ open, label, text, onType, onBackspace, onDone 
           return true // modal
       }
     },
-    200,
+    // 300: the keyboard can be summoned ON TOP of other modals (e.g. the
+    // channel manager, also priority 200) — it must always win input
+    300,
     open,
   )
 
   if (!open) return null
 
-  const R = 190 // wheel radius
+  return <SpiralKeyboardBody label={label} text={text} sector={sector} />
+}
+
+/**
+ * Rendering body, split out so layout hooks only run while open.
+ * The wheel has a fixed internal coordinate system (base px) and is scaled
+ * down as a whole to fit the space left over by label + field + hints, so
+ * no element can ever overlap another regardless of viewport height.
+ */
+function SpiralKeyboardBody({
+  label,
+  text,
+  sector,
+}: {
+  label?: string
+  text: string
+  sector: number | null
+}) {
+  const R = 190 // wheel radius (base coordinate system)
+  const base = R * 2 + 140 // full wheel bounding box incl. petal overhang
+
+  const [viewport, setViewport] = useState({ w: 0, h: 0 })
+  useEffect(() => {
+    const update = () => setViewport({ w: window.innerWidth, h: window.innerHeight })
+    update()
+    window.addEventListener('resize', update)
+    return () => window.removeEventListener('resize', update)
+  }, [])
+
+  // vertical space consumed by label, text field, hints, and breathing room
+  const RESERVED_V = 240
+  const scale =
+    viewport.h === 0
+      ? 1
+      : Math.max(
+          0.45,
+          Math.min(1, (viewport.h - RESERVED_V) / base, (viewport.w - 48) / base),
+        )
+  const size = Math.round(base * scale)
 
   return (
     <div
-      className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-background/85 backdrop-blur-md"
+      className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-background/85 py-4 backdrop-blur-md"
       role="dialog"
       aria-modal="true"
       aria-label="Spiral keyboard"
     >
       {/* Label + text preview */}
       {label ? (
-        <p className="mb-3 text-sm font-semibold uppercase tracking-widest text-primary">{label}</p>
+        <p className="mb-2 text-sm font-semibold uppercase tracking-widest text-primary text-balance">
+          {label}
+        </p>
       ) : null}
-      <div className="hud-pop mb-10 flex min-w-80 max-w-2xl items-center gap-3 rounded-xl border border-border bg-popover px-6 py-4">
+      <div className="hud-pop mb-5 flex min-w-80 max-w-2xl items-center gap-3 rounded-xl border border-border bg-popover px-6 py-3">
         <span className="font-mono text-xl">
           {text || <span className="text-muted-foreground">Type with the wheel…</span>}
         </span>
         <span className="glow-pulse h-6 w-0.5 bg-primary" aria-hidden="true" />
       </div>
 
-      {/* Daisy wheel */}
-      <div className="relative" style={{ width: R * 2 + 140, height: R * 2 + 140 }}>
+      {/* Daisy wheel — outer box reserves the SCALED footprint so flex layout
+          accounts for the true rendered size; inner keeps base coordinates */}
+      <div className="relative" style={{ width: size, height: size }}>
+        <div
+          className="absolute left-1/2 top-1/2"
+          style={{
+            width: base,
+            height: base,
+            transform: `translate(-50%, -50%) scale(${scale})`,
+          }}
+        >
         {SECTORS.map((chars, i) => {
           const angle = (i * 45 - 90) * (Math.PI / 180)
           const cx = Math.cos(angle) * R
@@ -156,12 +207,15 @@ export function SpiralKeyboard({ open, label, text, onType, onBackspace, onDone 
             <div
               key={i}
               className={`absolute left-1/2 top-1/2 flex size-28 items-center justify-center rounded-full border transition-all duration-150 ${
-                selected
-                  ? 'tile-glow z-10 scale-125 border-primary bg-secondary'
-                  : 'border-border bg-card/80'
+                selected ? 'tile-glow z-10 border-primary bg-secondary' : 'border-border bg-card/80'
               }`}
               style={{
-                transform: `translate(calc(-50% + ${cx}px), calc(-50% + ${cy}px))`,
+                // scale must come AFTER translate in the transform list —
+                // the Tailwind scale-125 utility uses the CSS `scale`
+                // property, which applies BEFORE `transform` and would
+                // multiply the petal's radial offset, pushing it out of
+                // the wheel (the overlap bug)
+                transform: `translate(calc(-50% + ${cx}px), calc(-50% + ${cy}px)) scale(${selected ? 1.25 : 1})`,
               }}
             >
               {/* 4 letters in petal positions */}
@@ -200,10 +254,11 @@ export function SpiralKeyboard({ open, label, text, onType, onBackspace, onDone 
           </span>
           <span className="text-xs text-muted-foreground">stick</span>
         </div>
+        </div>
       </div>
 
       {/* Hints */}
-      <div className="mt-10 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-muted-foreground">
+      <div className="mt-5 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-muted-foreground">
         <span className="flex items-center gap-2">
           <Glyph label="Y" color={BUTTON_COLORS.y} />
           <Glyph label="X" color={BUTTON_COLORS.x} />
