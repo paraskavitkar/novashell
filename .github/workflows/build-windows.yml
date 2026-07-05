@@ -65,7 +65,7 @@ jobs:
           Copy-Item (Get-Command node).Source src-tauri/resources/node/node.exe
 
       - name: Build Tauri app (NSIS installer)
-        run: pnpm dlx @tauri-apps/cli@latest build
+        run: pnpm dlx @tauri-apps/cli@2 build
         env:
           CI: true
 

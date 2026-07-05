@@ -25,6 +25,9 @@ windows = { version = "0.58", features = [
   "Win32_Foundation",
 ] }
 
+# Build-speed-first release profile: fat LTO added minutes of uncacheable
+# link time per CI build to shave ~1MB off a binary that ships inside a
+# ~50MB installer — not worth it.
 [profile.release]
-lto = true
-opt-level = "s"
+lto = false
+opt-level = 2
