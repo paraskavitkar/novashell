@@ -192,3 +192,10 @@ Controller-first everything.
   preview unaffected ✓. data/ + src-tauri/{target,resources} gitignored; DB untracked from git.
   NOTE: GitHub repo NOT yet connected in v0 — user must connect (Settings → Git), then
   Actions builds NovaShell-Setup automatically; `git tag v0.1.0 && git push --tags` = release link.
+- 2026-07-06 (auto-update pipeline session): User asked for updates with zero manual steps.
+  DONE: created private repo github.com/paraskavitkar/novashell via gh CLI (user approved,
+  blanket push permission granted), remote `github`, pushed master — Actions workflow
+  triggered automatically (run 28752073922, building the installer). UPDATES.md written:
+  full pipeline doc (push → CI → installer; tags → Releases; gh commands to watch/debug
+  builds; rules for v0 each session). Memory updated with repo + push workflow so every
+  future session pushes at end after browser testing. Distribution is now fully hands-off.
