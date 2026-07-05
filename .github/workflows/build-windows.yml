@@ -18,6 +18,10 @@ concurrency:
   group: build-${{ github.ref }}
   cancel-in-progress: true
 
+# contents: write is required for the release-publish step (default token is read-only)
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: windows-latest
