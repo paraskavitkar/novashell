@@ -61,6 +61,30 @@ function migrate(db: Database.Database) {
       value TEXT NOT NULL
     );
   `)
+
+  // v2: wide cinematic banner artwork for the hero carousel
+  const cols = db.prepare(`PRAGMA table_info(apps)`).all() as Array<{ name: string }>
+  if (!cols.some((c) => c.name === 'banner')) {
+    db.exec(`ALTER TABLE apps ADD COLUMN banner TEXT NOT NULL DEFAULT ''`)
+    const setBanner = db.prepare('UPDATE apps SET banner = ? WHERE id = ?')
+    for (const [id, banner] of [
+      ['youtube', '/banners/youtube.png'],
+      ['prime-video', '/banners/prime-video.png'],
+      ['crunchyroll', '/banners/crunchyroll.png'],
+      ['spotify', '/banners/spotify.png'],
+      ['steam', '/banners/steam.png'],
+      ['brave', '/banners/brave.png'],
+      // games reuse their key art as banner
+      ['neon-drift', '/games/neon-drift.png'],
+      ['starfall', '/games/starfall.png'],
+      ['emberkeep', '/games/emberkeep.png'],
+      ['skybound', '/games/skybound.png'],
+      ['vanguard', '/games/vanguard.png'],
+      ['apex-league', '/games/apex-league.png'],
+    ]) {
+      setBanner.run(banner, id)
+    }
+  }
 }
 
 function seedIfEmpty(db: Database.Database) {

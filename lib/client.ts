@@ -10,6 +10,7 @@ export interface ShellApp {
   source: string
   launch_target: string
   image: string
+  banner: string
   icon: string
   accent: string
   description: string

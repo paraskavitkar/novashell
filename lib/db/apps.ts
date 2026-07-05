@@ -7,6 +7,7 @@ export type AppRow = {
   source: string
   launch_target: string
   image: string
+  banner: string
   icon: string
   accent: string
   description: string
@@ -78,6 +79,7 @@ const EDITABLE = new Set([
   'source',
   'launch_target',
   'image',
+  'banner',
   'icon',
   'accent',
   'description',

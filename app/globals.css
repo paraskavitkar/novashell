@@ -47,41 +47,44 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
-/* Console shell theme — dark only, cinematic 10-foot UI */
+/*
+ * Console shell theme — quiet, warm near-black, minimalist premium.
+ * No neon, no glow. Hairline borders + soft depth shadows only.
+ */
 :root {
   color-scheme: dark;
-  --background: oklch(0.13 0.008 260);
-  --foreground: oklch(0.97 0.005 260);
-  --card: oklch(0.19 0.01 260);
-  --card-foreground: oklch(0.97 0.005 260);
-  --popover: oklch(0.17 0.01 260);
-  --popover-foreground: oklch(0.97 0.005 260);
-  --primary: oklch(0.82 0.13 195);
-  --primary-foreground: oklch(0.15 0.02 220);
-  --secondary: oklch(0.24 0.01 260);
-  --secondary-foreground: oklch(0.97 0.005 260);
-  --muted: oklch(0.22 0.01 260);
-  --muted-foreground: oklch(0.65 0.01 260);
-  --accent: oklch(0.82 0.13 195);
-  --accent-foreground: oklch(0.15 0.02 220);
-  --destructive: oklch(0.62 0.21 25);
-  --border: oklch(1 0 0 / 12%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.82 0.13 195);
-  --chart-1: oklch(0.82 0.13 195);
-  --chart-2: oklch(0.65 0.01 260);
-  --chart-3: oklch(0.44 0.01 260);
-  --chart-4: oklch(0.37 0.01 260);
-  --chart-5: oklch(0.27 0.01 260);
-  --radius: 0.75rem;
-  --sidebar: oklch(0.17 0.01 260);
-  --sidebar-foreground: oklch(0.97 0.005 260);
-  --sidebar-primary: oklch(0.82 0.13 195);
-  --sidebar-primary-foreground: oklch(0.15 0.02 220);
-  --sidebar-accent: oklch(0.24 0.01 260);
-  --sidebar-accent-foreground: oklch(0.97 0.005 260);
-  --sidebar-border: oklch(1 0 0 / 12%);
-  --sidebar-ring: oklch(0.82 0.13 195);
+  --background: oklch(0.145 0.004 75);
+  --foreground: oklch(0.95 0.004 80);
+  --card: oklch(0.185 0.005 75);
+  --card-foreground: oklch(0.95 0.004 80);
+  --popover: oklch(0.17 0.005 75);
+  --popover-foreground: oklch(0.95 0.004 80);
+  --primary: oklch(0.87 0.045 75);
+  --primary-foreground: oklch(0.16 0.005 75);
+  --secondary: oklch(0.23 0.005 75);
+  --secondary-foreground: oklch(0.95 0.004 80);
+  --muted: oklch(0.21 0.005 75);
+  --muted-foreground: oklch(0.62 0.008 80);
+  --accent: oklch(0.87 0.045 75);
+  --accent-foreground: oklch(0.16 0.005 75);
+  --destructive: oklch(0.58 0.17 25);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 12%);
+  --ring: oklch(0.95 0.004 80);
+  --chart-1: oklch(0.87 0.045 75);
+  --chart-2: oklch(0.62 0.008 80);
+  --chart-3: oklch(0.44 0.006 80);
+  --chart-4: oklch(0.35 0.005 80);
+  --chart-5: oklch(0.26 0.005 80);
+  --radius: 0.625rem;
+  --sidebar: oklch(0.17 0.005 75);
+  --sidebar-foreground: oklch(0.95 0.004 80);
+  --sidebar-primary: oklch(0.87 0.045 75);
+  --sidebar-primary-foreground: oklch(0.16 0.005 75);
+  --sidebar-accent: oklch(0.23 0.005 75);
+  --sidebar-accent-foreground: oklch(0.95 0.004 80);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.95 0.004 80);
 }
 
 @layer base {
@@ -93,6 +96,8 @@
   }
   body {
     @apply bg-background text-foreground;
+    font-feature-settings: 'ss01';
+    -webkit-font-smoothing: antialiased;
   }
 }
 
@@ -105,18 +110,23 @@
   display: none;
 }
 
-/* Focus glow for tiles */
+/*
+ * Focus treatment — restrained: hairline ring + lift shadow. No glow.
+ * (Class keeps its historical name; the visual is now minimal.)
+ */
 .tile-glow {
   box-shadow:
-    0 0 0 3px var(--ring),
-    0 0 32px 4px oklch(0.82 0.13 195 / 35%),
-    0 24px 48px -12px oklch(0 0 0 / 60%);
+    0 0 0 1.5px oklch(0.95 0.004 80 / 90%),
+    0 0 0 5px oklch(0.145 0.004 75),
+    0 0 0 6px oklch(1 0 0 / 14%),
+    0 24px 48px -16px oklch(0 0 0 / 70%);
 }
 
+/* Gentle entrance */
 @keyframes shell-fade-up {
   from {
     opacity: 0;
-    transform: translateY(16px);
+    transform: translateY(12px);
   }
   to {
     opacity: 1;
@@ -124,13 +134,13 @@
   }
 }
 .shell-fade-up {
-  animation: shell-fade-up 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: shell-fade-up 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 @keyframes hud-pop {
   from {
     opacity: 0;
-    transform: translateY(12px) scale(0.96);
+    transform: translateY(10px) scale(0.98);
   }
   to {
     opacity: 1;
@@ -138,13 +148,13 @@
   }
 }
 .hud-pop {
-  animation: hud-pop 0.22s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: hud-pop 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 @keyframes launch-zoom {
   from {
     opacity: 0;
-    transform: scale(0.85);
+    transform: scale(0.92);
   }
   to {
     opacity: 1;
@@ -152,12 +162,12 @@
   }
 }
 .launch-zoom {
-  animation: launch-zoom 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: launch-zoom 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 @keyframes click-ripple {
   from {
-    opacity: 0.8;
+    opacity: 0.5;
     transform: translate(-50%, -50%) scale(0.3);
   }
   to {
@@ -169,15 +179,73 @@
   animation: click-ripple 0.4s ease-out both;
 }
 
+/* Quiet breathing indicator (replaces glow-pulse) */
 @keyframes glow-pulse {
   0%,
   100% {
-    opacity: 0.6;
+    opacity: 0.35;
   }
   50% {
-    opacity: 1;
+    opacity: 0.9;
   }
 }
 .glow-pulse {
-  animation: glow-pulse 2.2s ease-in-out infinite;
+  animation: glow-pulse 2.4s ease-in-out infinite;
+}
+
+/* ===== Hero banner carousel ===== */
+
+/* Slow cinematic drift on the active banner image */
+@keyframes ken-burns {
+  from {
+    transform: scale(1.04) translateX(0);
+  }
+  to {
+    transform: scale(1.12) translateX(-1.5%);
+  }
+}
+.ken-burns {
+  animation: ken-burns 9s ease-out both;
+}
+
+/* Banner crossfade */
+@keyframes banner-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.banner-in {
+  animation: banner-in 0.9s ease both;
+}
+
+/* Hero copy slides in slightly after the image */
+@keyframes hero-copy-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.hero-copy-in {
+  animation: hero-copy-in 0.6s 0.15s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Thin progress bar fill for the active banner segment */
+@keyframes segment-fill {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+.segment-fill {
+  transform-origin: left center;
+  animation: segment-fill var(--segment-ms, 8000ms) linear both;
 }
