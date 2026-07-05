@@ -71,13 +71,16 @@ Controller-first everything.
 - [x] DB migrations: v2 `banner` column; v3 `content_feedback` table
 
 ### NATIVE-FIRST MANDATE (user insists: full native software, not web-first)
-- [ ] Ship as Tauri desktop app scaffold IN THIS PROJECT (src-tauri/): Rust shell, WebView2 UI
-- [ ] Rust commands: process launch (steam://, epic://, exe, Brave), enigo input injection,
-      global gamepad hook (Guide button), system volume (Windows Core Audio)
-- [ ] Local SQLite lives with the app (same schema); UI served from built static assets — zero server
-- [ ] Build instructions for user's Windows PC (download ZIP → pnpm tauri build)
-- User has offered full PC access; v0 sandbox cannot execute on their PC — deliverable is a
-  ready-to-build native project, not a hosted web app.
+- [x] Tauri scaffold shipped in src-tauri/: tauri.conf.json (withGlobalTauri), Cargo.toml, build.rs, main.rs
+- [x] Rust commands written: launch (steam://, epic://, exe, Brave --app mode), enigo
+      move_cursor/click/scroll/type_text, set_volume (Windows Core Audio via keybd fallback), exit_shell
+- [x] Web bridge (lib/native.ts) wired through shell: launch, content-open, volume, exit,
+      cursor move/click/scroll, keyboard type — same UI code, isNative() switches simulation → real OS
+- [ ] Global Xbox/Guide-button hook while other apps focused (background XInput poll thread in Rust)
+- [ ] Auto-scan installed Steam/Epic libraries from manifest files (vs manual entry)
+- [ ] SQLite via Tauri SQL plugin in the native build (schema identical; currently better-sqlite3 on dev server)
+- [ ] Build instructions doc for user's Windows PC (download ZIP → pnpm tauri build)
+- v0 sandbox is Linux: cannot compile the Windows exe here — deliverable is a ready-to-build native project.
 
 ### Known issues / polish backlog
 - [x] Library list: focused row auto-scroll — RETESTED ✓
@@ -108,3 +111,11 @@ Controller-first everything.
   Android-TV YouTube UI, custom icons, banners. Diary created. Next: Neon integration → schema →
   rebuild library as DB-driven → recommendations engine → YouTube leanback UI → icon/banner art →
   full click-by-click test pass.
+- 2026-07-05 (final test pass, post-overhaul): tsc clean. Verified in browser click-by-click:
+  discovery banner render/rotate/page ✓, X dismiss re-ranks instantly ✓, quick settings + volume
+  65→75 no HUD overlap ✓, desktop mode w/ simulated editor ✓, spiral keyboard typed "da" ✓,
+  launch splash + usage event recorded ✓ (Steam), library manager list/detail/hints ✓,
+  YouTube leanback with real current videos (MKBHD 2-days-ago) ✓, banner Watch opens service URL ✓.
+  Test artifacts cleaned: content_feedback rows + test Steam usage event deleted so the user's
+  taste profile starts neutral. Remaining backlog: Rust global Guide hook, Steam/Epic manifest
+  scan, Tauri SQL plugin swap, Windows build instructions doc, YT row virtualization.
