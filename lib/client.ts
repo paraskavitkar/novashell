@@ -121,6 +121,39 @@ export async function sendContentFeedback(
   }
 }
 
+/* ---------- YouTube channel subscriptions ---------- */
+
+export interface YouTubeChannel {
+  id: string
+  name: string
+}
+
+export function useYouTubeChannels() {
+  const { data, isLoading } = useSWR<YouTubeChannel[]>('/api/youtube/channels', fetcher, {
+    revalidateOnFocus: false,
+  })
+  return { channels: data ?? [], isLoading }
+}
+
+/** Add by @handle, channel URL, or raw UC... id. Returns the channel or an error message. */
+export async function addYouTubeChannel(query: string): Promise<{ ok: boolean; message: string }> {
+  const res = await fetch('/api/youtube/channels', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ query }),
+  })
+  const json = (await res.json()) as { name?: string; error?: string }
+  await Promise.all([globalMutate('/api/youtube/channels'), globalMutate('/api/youtube')])
+  return res.ok
+    ? { ok: true, message: `Added ${json.name}` }
+    : { ok: false, message: json.error ?? 'Channel not found' }
+}
+
+export async function removeYouTubeChannel(id: string) {
+  await fetch(`/api/youtube/channels?id=${encodeURIComponent(id)}`, { method: 'DELETE' })
+  await Promise.all([globalMutate('/api/youtube/channels'), globalMutate('/api/youtube')])
+}
+
 /* ---------- mutations ---------- */
 
 export async function recordUsage(appId: string, action: 'launch' | 'focus' = 'launch') {

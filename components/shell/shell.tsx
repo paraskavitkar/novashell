@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { mutate as swrMutate } from 'swr'
-import type { ContentItem, ShellApp } from '@/lib/client'
+import { addYouTubeChannel, type ContentItem, type ShellApp } from '@/lib/client'
 import {
   isNative,
   nativeExit,
@@ -39,9 +39,46 @@ export function Shell() {
   const [keyboard, setKeyboard] = useState<KeyboardRequest | null>(null)
 
   const [desktopText, setDesktopText] = useState('')
+  const [channelStatus, setChannelStatus] = useState<string | null>(null)
   const [volume, setVolume] = useState(65)
   const [volumeVisible, setVolumeVisible] = useState(false)
   const volumeTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Native startup sync: import Brave watch history + scan installed games,
+  // then refresh the affected SWR caches. No-ops in the web preview.
+  useEffect(() => {
+    if (!isNative()) return
+    ;(async () => {
+      const [imported, games] = await Promise.all([
+        nativeSyncBraveHistory(),
+        nativeScanInstalledGames(),
+      ])
+      if (games && games.length > 0) {
+        await fetch('/api/library/import', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ games }),
+        })
+      }
+      if (imported || (games && games.length > 0)) {
+        await Promise.all([
+          swrMutate('/api/history'),
+          swrMutate('/api/content'),
+          swrMutate('/api/library'),
+        ])
+      }
+    })()
+  }, [])
+
+  // Physical Guide button (global Rust hook): bring shell forward + go home.
+  useEffect(() => {
+    return onGuideButton(() => {
+      setQuickOpen(false)
+      setKeyboard(null)
+      setLaunching(null)
+      setMode('console')
+    })
+  }, [])
 
   const showVolume = useCallback((v: number) => {
     setVolume(v)
@@ -160,13 +197,19 @@ export function Shell() {
         <YouTubeTv
           active={!keyboard && !quickOpen}
           onBack={() => setMode('console')}
+          channelStatus={channelStatus}
+          onRequestAddChannel={() =>
+            requestText('Add channel — @handle or URL', '', (q) => {
+              if (!q.trim()) return
+              setChannelStatus('Resolving…')
+              addYouTubeChannel(q.trim()).then((r) => setChannelStatus(r.message))
+            })
+          }
           onOpenSearch={() =>
             requestText('Search YouTube', '', (q) => {
               if (q.trim()) {
-                window.open(
+                nativeLaunch(
                   `https://www.youtube.com/results?search_query=${encodeURIComponent(q.trim())}`,
-                  '_blank',
-                  'noopener',
                 )
               }
             })

@@ -76,17 +76,45 @@ Controller-first everything.
       move_cursor/click/scroll/type_text, set_volume (Windows Core Audio via keybd fallback), exit_shell
 - [x] Web bridge (lib/native.ts) wired through shell: launch, content-open, volume, exit,
       cursor move/click/scroll, keyboard type — same UI code, isNative() switches simulation → real OS
-- [ ] Global Xbox/Guide-button hook while other apps focused (background XInput poll thread in Rust)
-- [ ] Auto-scan installed Steam/Epic libraries from manifest files (vs manual entry)
+- [x] Global Guide-button hook: Rust background thread polling XInputGetStateEx (ordinal 100,
+      xinput1_4.dll — the only API exposing the Guide bit); rising-edge → focus shell window +
+      emit "guide-button"; shell subscribes via onGuideButton() and returns home
+- [x] Auto-scan installed games: Rust reads Steam appmanifest_*.acf (incl. extra library drives
+      via libraryfolders.vdf) + Epic ProgramData manifests → POST /api/library/import
+      (bulk upsert, stable lowercase ids steam-<appid>/epic-<app>, dedupe TESTED ✓)
+      Bug fixed: mixed-case Epic AppNames were rejected by id regex — now normalized
+- [x] Brave history import: Rust copies locked History SQLite to temp, reads crunchyroll/
+      primevideo/youtube URLs (Chrome epoch → unix), POSTs to /api/history on shell startup
+- [x] Build instructions doc: BUILD-WINDOWS.md (setup, build commands, web-vs-native feature matrix)
 - [ ] SQLite via Tauri SQL plugin in the native build (schema identical; currently better-sqlite3 on dev server)
-- [ ] Build instructions doc for user's Windows PC (download ZIP → pnpm tauri build)
+
+### WATCH HISTORY / TASTE PIPELINE (2026-07-05 — how existing + upcoming data connects)
+- [x] v4 migration: watch_history table (service, series, episode, url, watched_at, UNIQUE dedupe)
+- [x] Title parsers TESTED ✓: "Watching One Piece Episode 1071 - Crunchyroll" → series+episode;
+      "Prime Video: The Boys - Season 4" / "Watch Reacher | Prime Video"; YouTube " - YouTube";
+      non-streaming URLs (google search) correctly rejected by the importer
+- [x] Continue Watching row on home TESTED ✓: latest entry per series, service-tinted cards,
+      episode label + relative time, A=Resume deep-links to the exact episode page (the service
+      resumes its own in-episode position — exact timestamp is server-side only, NOT accessible)
+- [x] Taste engine merges THREE signals TESTED ✓: banner feedback (opened/dismissed) +
+      watched-series genres (TVmaze singlesearch, cached, engagement-weighted by visits) +
+      already-watched shows get +12 boost with "New episode of a show you watch" reason.
+      Verified: One Piece/Solo Leveling/The Boys history → banner leads with
+      "Because you watch Action" anime on Crunchyroll.
+- NOTE: preview DB holds SIMULATED Brave-history rows (One Piece, Solo Leveling, The Boys,
+  Reacher) imported through the REAL pipeline so the feature is visible in preview. The native
+  build overwrites with the real profile import on first launch. Clear manually with:
+  DELETE FROM watch_history.
 - v0 sandbox is Linux: cannot compile the Windows exe here — deliverable is a ready-to-build native project.
 
 ### Known issues / polish backlog
 - [x] Library list: focused row auto-scroll — RETESTED ✓
 - [x] Volume HUD overlaps Quick Settings slider — fixed (suppressed while panel open)
-- [ ] YouTube TV: row virtualization if subscriptions grow large
-- [x] YouTube channels API (add by @handle w/ resolution, remove) — TESTED ✓; UI pending restyle
+- [ ] YouTube TV: row virtualization if subscriptions grow large (only matters at ~20+ channels)
+- [x] YouTube channels API (add by @handle w/ resolution, remove) — TESTED ✓
+- [x] Channel manager UI SHIPPED + TESTED ✓: X on YouTube screen opens minimalist modal
+      (list + Add entry), D-pad nav, X removes (Fireship removed 5→4 verified), A on Add opens
+      spiral keyboard, status line shows resolve feedback. Fireship restored via @handle after test.
 
 ## User preferences observed
 - Wants maximal effort, long autonomous work sessions, thorough testing of every click/component
@@ -119,3 +147,12 @@ Controller-first everything.
   Test artifacts cleaned: content_feedback rows + test Steam usage event deleted so the user's
   taste profile starts neutral. Remaining backlog: Rust global Guide hook, Steam/Epic manifest
   scan, Tauri SQL plugin swap, Windows build instructions doc, YT row virtualization.
+- 2026-07-05 (data-connection session): User asked how existing/upcoming data connects and what's
+  incomplete in Prime/Crunchyroll. Answer implemented: Brave-history import pipeline (only local
+  source of Prime/Crunchyroll truth — no public watch APIs exist) → watch_history → Continue
+  Watching row + genre taste via TVmaze. Full regression pass: home banner shows
+  "Because you watch Action" ✓, Continue Watching cards w/ One Piece Ep 1071 (2h ago) ✓,
+  row nav + focus ✓, desktop toggle ✓. Rust core finished: Guide hook, game scan, history reader.
+  Game import API tested incl. Epic id-casing bugfix + cleanup of test rows (Cyberpunk/Fortnite
+  deleted). BUILD-WINDOWS.md written. tsc clean. Remaining: Tauri SQL swap (native-build-time),
+  YT row virtualization (only matters at scale), YT channel manager UI.

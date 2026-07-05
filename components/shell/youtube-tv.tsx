@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useYouTubeFeed, type YouTubeVideo } from '@/lib/client'
 import { useShellInput } from './gamepad-context'
 import { ButtonHints } from './button-hints'
+import { ChannelManager } from './channel-manager'
 import { Play, Search, Tv } from 'lucide-react'
 
 function timeAgo(iso: string): string {
@@ -18,15 +19,20 @@ export function YouTubeTv({
   active,
   onBack,
   onOpenSearch,
+  onRequestAddChannel,
+  channelStatus,
 }: {
   active: boolean
   onBack: () => void
   onOpenSearch: () => void
+  onRequestAddChannel: () => void
+  channelStatus: string | null
 }) {
   const { rows, isLoading } = useYouTubeFeed()
   const [rowIndex, setRowIndex] = useState(0)
   const [cols, setCols] = useState<Record<string, number>>({})
   const [playing, setPlaying] = useState<YouTubeVideo | null>(null)
+  const [managing, setManaging] = useState(false)
   const cardRefs = useRef<Map<string, HTMLButtonElement>>(new Map())
 
   const safeRow = Math.min(rowIndex, Math.max(0, rows.length - 1))
@@ -63,6 +69,9 @@ export function YouTubeTv({
         case 'y':
           onOpenSearch()
           return true
+        case 'x':
+          setManaging(true)
+          return true
         case 'back':
           onBack()
           return true
@@ -71,7 +80,7 @@ export function YouTubeTv({
       }
     },
     20,
-    active,
+    active && !managing,
   )
 
   useEffect(() => {
@@ -213,11 +222,19 @@ export function YouTubeTv({
         </div>
       ) : null}
 
+      <ChannelManager
+        open={managing}
+        onClose={() => setManaging(false)}
+        onRequestAdd={onRequestAddChannel}
+        status={channelStatus}
+      />
+
       <ButtonHints
         hints={[
           { glyph: 'A', label: 'Play', color: 'oklch(0.75 0.17 145)' },
           { glyph: 'B', label: 'Home', color: 'oklch(0.65 0.2 25)' },
           { glyph: 'Y', label: 'Search', color: 'oklch(0.8 0.16 85)' },
+          { glyph: 'X', label: 'Channels', color: 'oklch(0.72 0.14 240)' },
           { glyph: 'ⓖ', label: 'Desktop Mode' },
         ]}
       />

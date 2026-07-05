@@ -41,13 +41,15 @@ export async function POST(req: Request) {
         typeof g?.id !== 'string' ||
         typeof g?.name !== 'string' ||
         !['steam', 'epic'].includes(g?.source) ||
-        typeof g?.launch_target !== 'string' ||
-        !/^[a-z0-9-]{1,60}$/.test(g.id)
+        typeof g?.launch_target !== 'string'
       ) {
         continue
       }
+      // Epic AppNames are mixed-case — normalize to a stable lowercase id
+      const id = g.id.toLowerCase().replace(/[^a-z0-9-]/g, '-').slice(0, 60)
+      if (!/^[a-z0-9-]{1,60}$/.test(id)) continue
       upsert.run({
-        id: g.id,
+        id,
         name: g.name.slice(0, 80),
         source: g.source,
         launch_target: g.launch_target.slice(0, 500),
