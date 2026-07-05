@@ -68,7 +68,9 @@ Controller-first everything.
 
 ## Architecture decisions
 - Next.js (App Router) web shell now; Tauri-ready separation: all OS actions behind a `native/` adapter interface with web fallbacks
-- Neon (Postgres + Drizzle) for: library items, usage events, suggestion feedback, settings
+- ~~Neon~~ → User declined cloud integrations. Using **local SQLite (better-sqlite3)** via Next.js
+  API routes — correct local-first architecture for a native launcher anyway (maps 1:1 to Tauri).
+  Tables: apps, usage_events, suggestion_feedback, settings.
 - Gamepad engine: rAF polling loop, edge detection, repeat handling — lib/gamepad.ts
 - Focus system: React context, roving focus, scrollIntoView centering
 
