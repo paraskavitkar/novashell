@@ -199,3 +199,13 @@ Controller-first everything.
   full pipeline doc (push → CI → installer; tags → Releases; gh commands to watch/debug
   builds; rules for v0 each session). Memory updated with repo + push workflow so every
   future session pushes at end after browser testing. Distribution is now fully hands-off.
+- 2026-07-06 (pipeline debugging → FIRST RELEASE SHIPPED): Three CI failures fixed in-session:
+  (1) missing icons/icon.ico — Windows Tauri builds REQUIRE it; generated nova icon via
+  tauri-cli icon command, wired bundle.icon in tauri.conf. (2) plain `git push github master`
+  silently no-ops from v0's working branch — must use HEAD:master (UPDATES.md + memory
+  corrected). (3) release publish 403 — workflow needs `permissions: contents: write`.
+  Also mid-session: repo 404'd unexpectedly (external deletion?) — recreated, re-pushed,
+  cache made second build faster. RESULT: v0.1.0 release LIVE with
+  NovaShell_0.1.0_x64-setup.exe (68 MB):
+  https://github.com/paraskavitkar/novashell/releases/tag/v0.1.0
+  Pipeline fully proven end-to-end: push → green build → tag → release with installer.
