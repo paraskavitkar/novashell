@@ -455,6 +455,33 @@ fn spawn_embedded_server(app: &tauri::AppHandle) {
     match cmd.spawn() {
         Ok(child) => {
             *EMBEDDED_SERVER.lock().unwrap() = Some(child);
+            // WebView2 does NOT retry a failed initial load. The window loads
+            // localhost:3210 before Node finishes booting (~1s), leaving a
+            // permanent connection-refused page. Poll the port from a
+            // background thread and (re)navigate once the server answers.
+            let handle = app.clone();
+            std::thread::spawn(move || {
+                let addr: std::net::SocketAddr = ([127, 0, 0, 1], 3210).into();
+                for _ in 0..240 {
+                    if std::net::TcpStream::connect_timeout(
+                        &addr,
+                        std::time::Duration::from_millis(500),
+                    )
+                    .is_ok()
+                    {
+                        // brief grace so Next finishes route compilation
+                        std::thread::sleep(std::time::Duration::from_millis(300));
+                        #[allow(unused_mut)]
+                        if let Some(mut win) = handle.get_webview_window("main") {
+                            if let Ok(url) = "http://localhost:3210".parse() {
+                                let _ = win.navigate(url);
+                            }
+                        }
+                        return;
+                    }
+                    std::thread::sleep(std::time::Duration::from_millis(250));
+                }
+            });
         }
         Err(e) => eprintln!("NovaShell: failed to start embedded server: {e}"),
     }
