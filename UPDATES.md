@@ -25,7 +25,16 @@ After finishing + testing a feature in a session:
 ```bash
 git add -A
 git commit -m "feat: <what changed>"
-git push github master
+git push github HEAD:master
+```
+
+IMPORTANT: always push `HEAD:master`, NOT `master`. v0 sessions run on a
+separate working branch (`v0/...`), so plain `git push github master` pushes
+the stale local master ref and silently reports "Everything up-to-date"
+while your commit goes nowhere. Verify after pushing:
+
+```bash
+git ls-remote github master   # hash must match: git rev-parse HEAD
 ```
 
 That's it — Actions builds the installer automatically. No user action needed.
