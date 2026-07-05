@@ -64,6 +64,9 @@ export interface ContinueWatchingItem {
   url: string
   watched_at: number
   visits: number
+  /** real playback position from the CDP monitor; null = history-only entry */
+  position_secs: number | null
+  duration_secs: number | null
 }
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json())

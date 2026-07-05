@@ -91,6 +91,23 @@ function migrate(db: Database.Database) {
     CREATE INDEX IF NOT EXISTS idx_watch_series ON watch_history(series, watched_at DESC);
   `)
 
+  // v5: REAL playback positions captured live via CDP (Brave --remote-debugging-port).
+  // One row per media URL, continuously upserted while a video plays.
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS playback_positions (
+      url TEXT PRIMARY KEY,
+      service TEXT NOT NULL,                        -- crunchyroll | prime-video | youtube
+      series TEXT NOT NULL,
+      episode TEXT NOT NULL DEFAULT '',
+      title_raw TEXT NOT NULL DEFAULT '',
+      position_secs REAL NOT NULL DEFAULT 0,        -- video.currentTime
+      duration_secs REAL,                           -- video.duration (null if unknown/live)
+      paused INTEGER NOT NULL DEFAULT 0,
+      updated_at INTEGER NOT NULL DEFAULT (unixepoch())
+    );
+    CREATE INDEX IF NOT EXISTS idx_playback_series ON playback_positions(series, updated_at DESC);
+  `)
+
   // v2: wide cinematic banner artwork for the hero carousel
   const cols = db.prepare(`PRAGMA table_info(apps)`).all() as Array<{ name: string }>
   if (!cols.some((c) => c.name === 'banner')) {

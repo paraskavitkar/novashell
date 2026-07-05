@@ -33,6 +33,9 @@ export interface ContinueWatchingItem {
   url: string
   watched_at: number
   visits: number
+  /** real playback position from the CDP monitor; null = history-only entry */
+  position_secs: number | null
+  duration_secs: number | null
 }
 
 /* ---------- title parsing ---------- */
@@ -134,24 +137,63 @@ export function importHistory(entries: RawHistoryEntry[]): { imported: number; s
 /* ---------- queries ---------- */
 
 /**
- * Continue Watching: most recent entry per series (Crunchyroll + Prime only),
- * newest first. `visits` = how many entries for that series (engagement signal).
+ * Continue Watching: one entry per series, newest first.
+ *
+ * Two sources, merged with real playback (CDP monitor) always winning:
+ *  1. playback_positions — REAL positions read from the <video> element via
+ *     CDP while you watch. Has position/duration → true progress bars.
+ *  2. watch_history — title-parsed Brave history. Cold-start fallback only;
+ *     no in-episode position available.
+ * Nearly-finished playback (>=97%) is treated as "done" and falls back to
+ * the history entry so finished episodes don't stick around.
  */
 export function getContinueWatching(limit = 10): ContinueWatchingItem[] {
   const db = getDb()
-  const rows = db
+
+  const playback = db
+    .prepare(
+      `SELECT service, series, episode, url, updated_at AS watched_at,
+              position_secs, duration_secs,
+              1 AS visits
+       FROM playback_positions p1
+       WHERE service IN ('crunchyroll', 'prime-video')
+         AND updated_at = (SELECT MAX(updated_at) FROM playback_positions p2 WHERE p2.series = p1.series)
+       GROUP BY series
+       ORDER BY updated_at DESC`,
+    )
+    .all() as Array<Omit<ContinueWatchingItem, 'serviceLabel'>>
+
+  const history = db
     .prepare(
       `SELECT service, series, episode, url, watched_at,
+              NULL AS position_secs, NULL AS duration_secs,
               (SELECT COUNT(*) FROM watch_history w2 WHERE w2.series = w1.series) AS visits
        FROM watch_history w1
        WHERE service IN ('crunchyroll', 'prime-video')
          AND watched_at = (SELECT MAX(watched_at) FROM watch_history w3 WHERE w3.series = w1.series)
        GROUP BY series
-       ORDER BY watched_at DESC
-       LIMIT ?`,
+       ORDER BY watched_at DESC`,
     )
-    .all(limit) as Array<Omit<ContinueWatchingItem, 'serviceLabel'>>
-  return rows.map((r) => ({ ...r, serviceLabel: SERVICE_LABEL[r.service] }))
+    .all() as Array<Omit<ContinueWatchingItem, 'serviceLabel'>>
+
+  const bySeries = new Map<string, Omit<ContinueWatchingItem, 'serviceLabel'>>()
+  // history first, then playback overwrites (playback = ground truth)
+  for (const h of history) bySeries.set(h.series.toLowerCase(), h)
+  for (const p of playback) {
+    const finished =
+      p.duration_secs != null && p.duration_secs > 0 && p.position_secs != null
+        ? p.position_secs / p.duration_secs >= 0.97
+        : false
+    if (finished) continue // done — let the history entry (next episode visit) represent the series
+    // engagement: keep the history visit count if we have one
+    const prior = bySeries.get(p.series.toLowerCase())
+    bySeries.set(p.series.toLowerCase(), { ...p, visits: prior?.visits ?? 1 })
+  }
+
+  return [...bySeries.values()]
+    .sort((a, b) => b.watched_at - a.watched_at)
+    .slice(0, limit)
+    .map((r) => ({ ...r, serviceLabel: SERVICE_LABEL[r.service] }))
 }
 
 /** Series names from history, most-engaged first — feeds taste + "what's next". */

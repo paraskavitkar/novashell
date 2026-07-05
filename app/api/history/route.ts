@@ -1,10 +1,12 @@
 import { NextResponse } from 'next/server'
 import { getContinueWatching, importHistory, type RawHistoryEntry } from '@/lib/db/watch-history'
+import { ensureCdpMonitor } from '@/lib/cdp/monitor'
 
 export const runtime = 'nodejs'
 
-/** GET /api/history — Continue Watching list */
+/** GET /api/history — Continue Watching list (also boots the CDP playback monitor) */
 export async function GET() {
+  ensureCdpMonitor()
   return NextResponse.json({ items: getContinueWatching() })
 }
 

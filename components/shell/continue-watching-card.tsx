@@ -24,6 +24,13 @@ function relativeTime(unixSeconds: number): string {
   return `${Math.floor(diff / (7 * 86400))}w ago`
 }
 
+function formatClock(secs: number): string {
+  const m = Math.floor(secs / 60)
+  const s = Math.floor(secs % 60)
+  const h = Math.floor(m / 60)
+  return h > 0 ? `${h}:${String(m % 60).padStart(2, '0')}:${String(s).padStart(2, '0')}` : `${m}:${String(s).padStart(2, '0')}`
+}
+
 interface Props {
   item: ContinueWatchingItem
   focused: boolean
@@ -32,6 +39,11 @@ interface Props {
 
 export const ContinueWatchingCard = forwardRef<HTMLButtonElement, Props>(
   function ContinueWatchingCard({ item, focused, onOpen }, ref) {
+    // Real playback progress (from the CDP monitor). Null on history-only rows.
+    const progress =
+      item.position_secs != null && item.duration_secs != null && item.duration_secs > 0
+        ? Math.min(1, item.position_secs / item.duration_secs)
+        : null
     return (
       <button
         ref={ref}
@@ -58,9 +70,24 @@ export const ContinueWatchingCard = forwardRef<HTMLButtonElement, Props>(
           ) : null}
           <div className="mt-2.5 flex items-center gap-1.5 text-xs font-medium text-white/80">
             <Play className="size-3.5 fill-current" />
-            Resume
+            {item.position_secs != null && item.position_secs > 0
+              ? `Resume at ${formatClock(item.position_secs)}`
+              : 'Resume'}
           </div>
         </div>
+
+        {/* Real progress bar — only when the CDP monitor captured a position */}
+        {progress != null ? (
+          <div
+            className="absolute inset-x-0 bottom-0 h-0.5 bg-white/15"
+            role="progressbar"
+            aria-valuenow={Math.round(progress * 100)}
+            aria-valuemin={0}
+            aria-valuemax={100}
+          >
+            <div className="h-full bg-white/80" style={{ width: `${progress * 100}%` }} />
+          </div>
+        ) : null}
       </button>
     )
   },

@@ -28,8 +28,20 @@ fn launch_target(target: String) -> Result<(), String> {
     // Web URLs open in Brave app mode (frameless, console-like).
     if t.starts_with("http://") || t.starts_with("https://") {
         // Brave app-mode window: user's real profile, sessions, and accounts.
+        // --remote-debugging-port powers the CDP playback monitor (real
+        // Continue Watching positions read from the <video> element). The
+        // flag only applies on Brave's FIRST process start; if Brave is
+        // already running without it, the OS reuses that instance (the
+        // monitor then simply finds no endpoint and stays idle).
         let brave = Command::new("cmd")
-            .args(["/C", "start", "", "brave.exe", &format!("--app={t}")])
+            .args([
+                "/C",
+                "start",
+                "",
+                "brave.exe",
+                "--remote-debugging-port=9222",
+                &format!("--app={t}"),
+            ])
             .spawn();
         if brave.is_err() {
             // Fallback: default browser
