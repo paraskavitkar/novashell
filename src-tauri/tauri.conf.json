@@ -6,8 +6,7 @@
   "build": {
     "beforeDevCommand": "pnpm dev",
     "devUrl": "http://localhost:3000",
-    "beforeBuildCommand": "pnpm build",
-    "frontendDist": "http://localhost:3000"
+    "frontendDist": "http://localhost:3210"
   },
   "app": {
     "withGlobalTauri": true,
@@ -18,7 +17,7 @@
         "decorations": false,
         "alwaysOnTop": false,
         "resizable": true,
-        "url": "http://localhost:3000"
+        "url": "http://localhost:3210"
       }
     ],
     "security": {
@@ -28,6 +27,9 @@
   "bundle": {
     "active": true,
     "targets": ["nsis"],
+    "resources": {
+      "resources/": "resources/"
+    },
     "windows": {
       "nsis": {
         "installMode": "currentUser"

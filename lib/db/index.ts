@@ -4,7 +4,9 @@ import fs from 'fs'
 
 let db: Database.Database | null = null
 
-const DATA_DIR = path.join(process.cwd(), 'data')
+// NOVASHELL_DATA_DIR is set by the Rust core in the native build (%APPDATA%\NovaShell)
+// so user data survives app updates; dev server falls back to ./data
+const DATA_DIR = process.env.NOVASHELL_DATA_DIR ?? path.join(process.cwd(), 'data')
 const DB_PATH = path.join(DATA_DIR, 'gamepad-ux.db')
 
 export function getDb(): Database.Database {

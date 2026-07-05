@@ -107,6 +107,29 @@ Controller-first everything.
   DELETE FROM watch_history.
 - v0 sandbox is Linux: cannot compile the Windows exe here — deliverable is a ready-to-build native project.
 
+### CDP PLAYBACK MONITOR (2026-07-05 — user requested REAL positions, not title parsing)
+- [x] Research: no public watch APIs for Prime/Crunchyroll; browser-extension scrobblers
+      (universal-trakt-scrobbler, web-scrobbler) prove reading video.currentTime works.
+      CDP approach chosen: Brave launched with --remote-debugging-port=9222, monitor polls
+      /json/list → attaches via WebSocket (Node 22 native, zero deps) → Runtime.evaluate reads
+      {currentTime, duration, paused} from the <video> element. Iframe targets supported via
+      parentId chain (CRITICAL for Crunchyroll's cross-origin player iframe).
+- [x] v5 migration: playback_positions table (url PK, service, series, episode, position_secs,
+      duration_secs, paused, updated_at)
+- [x] lib/cdp/monitor.ts: 4s poll loop, HMR-safe generation guard, port priority
+      settings.cdp_port → env CDP_PORT → 9222; starts lazily from GET /api/history
+- [x] Continue Watching merge: playback rows (ground truth, real progress) override
+      title-parsed history; >=97% watched treated as finished (falls back to history)
+- [x] Card UI: "Resume at 4:05" + bottom progress bar (role=progressbar) only when real
+      position exists; history-only rows show plain "Resume"
+- [x] TESTED END-TO-END ✓ in sandbox: launched real Chromium w/ debug port + canvas-stream
+      video faking a Crunchyroll watch page; monitor captured position 245.8s/1440s;
+      home screen showed "Resume at 4:05" + 17% progress bar on the One Piece card.
+      Test artifacts cleaned (test chrome killed, file:// playback rows + port override deleted).
+- [x] Rust launch() now passes --remote-debugging-port=9222 to Brave (flag only binds on first
+      Brave process start; if Brave already runs without it, monitor stays idle harmlessly)
+- Preview home now shows plain "Resume" cards again (correct: only REAL playback gets a bar).
+
 ### Known issues / polish backlog
 - [x] Library list: focused row auto-scroll — RETESTED ✓
 - [x] Volume HUD overlaps Quick Settings slider — fixed (suppressed while panel open)
