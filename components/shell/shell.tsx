@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useRef, useState } from 'react'
-import type { TileItem } from '@/lib/apps-data'
+import type { ShellApp } from '@/lib/client'
 import { useShellInput } from './gamepad-context'
 import { TopBar } from './top-bar'
 import { HomeScreen } from './home-screen'
@@ -10,20 +10,27 @@ import { VolumeHud } from './volume-hud'
 import { LaunchSplash } from './launch-splash'
 import { DesktopMode } from './desktop-mode'
 import { SpiralKeyboard } from './spiral-keyboard'
+import { LibraryManager } from './library-manager'
+import { YouTubeTv } from './youtube-tv'
 
-type Mode = 'console' | 'desktop'
+type Mode = 'console' | 'desktop' | 'library' | 'youtube'
+
+interface KeyboardRequest {
+  label: string
+  value: string
+  onCommit: (v: string) => void
+}
 
 export function Shell() {
   const [mode, setMode] = useState<Mode>('console')
   const [quickOpen, setQuickOpen] = useState(false)
-  const [keyboardOpen, setKeyboardOpen] = useState(false)
-  const [launching, setLaunching] = useState<TileItem | null>(null)
+  const [launching, setLaunching] = useState<ShellApp | null>(null)
+  const [keyboard, setKeyboard] = useState<KeyboardRequest | null>(null)
 
+  const [desktopText, setDesktopText] = useState('')
   const [volume, setVolume] = useState(65)
   const [volumeVisible, setVolumeVisible] = useState(false)
   const volumeTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-
-  const [typedText, setTypedText] = useState('')
 
   const showVolume = useCallback((v: number) => {
     setVolume(v)
@@ -32,13 +39,42 @@ export function Shell() {
     volumeTimer.current = setTimeout(() => setVolumeVisible(false), 1600)
   }, [])
 
+  const requestText = useCallback(
+    (label: string, initial: string, onCommit: (v: string) => void) => {
+      setKeyboard({ label, value: initial, onCommit })
+    },
+    [],
+  )
+
+  const handleLaunch = useCallback((app: ShellApp) => {
+    const target = app.launch_target
+    if (target === 'builtin:desktop') {
+      setMode('desktop')
+      return
+    }
+    if (target === 'builtin:library') {
+      setMode('library')
+      return
+    }
+    if (target === 'builtin:youtube-tv') {
+      setMode('youtube')
+      return
+    }
+    if (target === 'builtin:exit') {
+      // Native layer: restore Windows shell. Web preview: show splash.
+      setLaunching(app)
+      return
+    }
+    setLaunching(app)
+  }, [])
+
   // Highest priority: Guide (Xbox) button toggles console <-> desktop from anywhere.
   // In the native build this maps to the physical Xbox button / a global hotkey.
   useShellInput(
     (action) => {
       if (action === 'guide') {
         setQuickOpen(false)
-        setKeyboardOpen(false)
+        setKeyboard(null)
         setLaunching(null)
         setMode((m) => (m === 'console' ? 'desktop' : 'console'))
         return true
@@ -63,51 +99,80 @@ export function Shell() {
       return false
     },
     90,
-    mode === 'console' && !keyboardOpen,
+    mode !== 'desktop' && !keyboard,
   )
 
-  const homeActive = mode === 'console' && !quickOpen && !keyboardOpen && !launching
+  const homeActive = mode === 'console' && !quickOpen && !keyboard && !launching
 
   return (
     <div className="flex h-dvh flex-col overflow-hidden">
       {mode === 'console' ? (
         <>
           <TopBar volume={volume} />
-          <HomeScreen
-            active={homeActive}
-            onLaunch={setLaunching}
-            onOpenQuick={() => setQuickOpen(true)}
-            onDesktopMode={() => setMode('desktop')}
-          />
+          <HomeScreen active={homeActive} onLaunch={handleLaunch} onOpenQuick={() => setQuickOpen(true)} />
         </>
       ) : null}
 
+      {mode === 'library' ? (
+        <LibraryManager
+          active={!keyboard && !quickOpen}
+          onBack={() => setMode('console')}
+          requestText={requestText}
+        />
+      ) : null}
+
+      {mode === 'youtube' ? (
+        <YouTubeTv
+          active={!keyboard && !quickOpen}
+          onBack={() => setMode('console')}
+          onOpenSearch={() =>
+            requestText('Search YouTube', '', (q) => {
+              if (q.trim()) {
+                window.open(
+                  `https://www.youtube.com/results?search_query=${encodeURIComponent(q.trim())}`,
+                  '_blank',
+                  'noopener',
+                )
+              }
+            })
+          }
+        />
+      ) : null}
+
       <DesktopMode
-        active={mode === 'desktop' && !keyboardOpen}
+        active={mode === 'desktop' && !keyboard}
         visible={mode === 'desktop'}
-        typedText={typedText}
-        onOpenKeyboard={() => setKeyboardOpen(true)}
+        typedText={desktopText}
+        onOpenKeyboard={() => requestText('Type into the app', desktopText, setDesktopText)}
       />
 
-      {launching ? (
-        <LaunchSplash item={launching} onClose={() => setLaunching(null)} />
-      ) : null}
+      {launching ? <LaunchSplash app={launching} onClose={() => setLaunching(null)} /> : null}
 
       <QuickSettings
         open={quickOpen}
         volume={volume}
         onVolumeChange={showVolume}
         onClose={() => setQuickOpen(false)}
-        onDesktopMode={() => setMode('desktop')}
-        onOpenKeyboard={() => setKeyboardOpen(true)}
+        onDesktopMode={() => {
+          setQuickOpen(false)
+          setMode('desktop')
+        }}
+        onOpenKeyboard={() => {
+          setQuickOpen(false)
+          requestText('Type into the app', desktopText, setDesktopText)
+        }}
       />
 
       <SpiralKeyboard
-        open={keyboardOpen}
-        text={typedText}
-        onType={(c) => setTypedText((t) => t + c)}
-        onBackspace={() => setTypedText((t) => t.slice(0, -1))}
-        onDone={() => setKeyboardOpen(false)}
+        open={!!keyboard}
+        label={keyboard?.label}
+        text={keyboard?.value ?? ''}
+        onType={(c) => setKeyboard((k) => (k ? { ...k, value: k.value + c } : k))}
+        onBackspace={() => setKeyboard((k) => (k ? { ...k, value: k.value.slice(0, -1) } : k))}
+        onDone={() => {
+          if (keyboard) keyboard.onCommit(keyboard.value)
+          setKeyboard(null)
+        }}
       />
 
       <VolumeHud volume={volume} visible={volumeVisible} />

@@ -27,13 +27,14 @@ const BUTTON_COLORS = {
 
 interface SpiralKeyboardProps {
   open: boolean
+  label?: string
   text: string
   onType: (char: string) => void
   onBackspace: () => void
   onDone: () => void
 }
 
-export function SpiralKeyboard({ open, text, onType, onBackspace, onDone }: SpiralKeyboardProps) {
+export function SpiralKeyboard({ open, label, text, onType, onBackspace, onDone }: SpiralKeyboardProps) {
   const { sticks } = useGamepad()
   const [sector, setSector] = useState<number | null>(null)
   const sectorRef = useRef<number | null>(null)
@@ -123,7 +124,10 @@ export function SpiralKeyboard({ open, text, onType, onBackspace, onDone }: Spir
       aria-modal="true"
       aria-label="Spiral keyboard"
     >
-      {/* Text preview */}
+      {/* Label + text preview */}
+      {label ? (
+        <p className="mb-3 text-sm font-semibold uppercase tracking-widest text-primary">{label}</p>
+      ) : null}
       <div className="hud-pop mb-10 flex min-w-80 max-w-2xl items-center gap-3 rounded-xl border border-border bg-popover px-6 py-4">
         <span className="font-mono text-xl">
           {text || <span className="text-muted-foreground">Type with the wheel…</span>}
