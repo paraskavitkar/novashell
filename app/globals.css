@@ -111,15 +111,38 @@
 }
 
 /*
- * Focus treatment — restrained: hairline ring + lift shadow. No glow.
- * (Class keeps its historical name; the visual is now minimal.)
+ * Focus treatment — GPU-composited, no layout shift, no glow.
+ * Transition transform + box-shadow only; both are compositor-friendly.
  */
+.tile-rest,
+.tile-focus {
+  transition:
+    transform 0.22s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.22s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.22s ease;
+}
+.tile-rest {
+  box-shadow: 0 0 0 1px oklch(1 0 0 / 7%);
+  opacity: 0.82;
+}
+.tile-rest:hover {
+  opacity: 1;
+}
+.tile-focus {
+  z-index: 10;
+  opacity: 1;
+  box-shadow:
+    0 0 0 2px oklch(0.145 0.004 75),
+    0 0 0 3.5px oklch(0.95 0.004 80),
+    0 20px 40px -14px oklch(0 0 0 / 75%);
+}
+
+/* Legacy alias still referenced by secondary screens (restyled to match) */
 .tile-glow {
   box-shadow:
-    0 0 0 1.5px oklch(0.95 0.004 80 / 90%),
-    0 0 0 5px oklch(0.145 0.004 75),
-    0 0 0 6px oklch(1 0 0 / 14%),
-    0 24px 48px -16px oklch(0 0 0 / 70%);
+    0 0 0 2px oklch(0.145 0.004 75),
+    0 0 0 3.5px oklch(0.95 0.004 80),
+    0 20px 40px -14px oklch(0 0 0 / 75%);
 }
 
 /* Gentle entrance */

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { FileCode2, Gamepad2, MousePointer2, Search, X } from 'lucide-react'
+import { isNative, nativeClick, nativeMoveCursor, nativeScroll } from '@/lib/native'
 import { useGamepad, useShellInput } from './gamepad-context'
 import { ButtonHints } from './button-hints'
 
@@ -83,7 +84,12 @@ export function DesktopMode({
   const doClick = () => {
     const { x, y } = pos.current
     setRipples((r) => [...r.slice(-4), { id: ++rippleId.current, x, y }])
-    // hide cursor from hit-testing, then dispatch a real click
+    // Native build: real OS click at the real cursor position
+    if (isNative()) {
+      nativeClick('left')
+      return
+    }
+    // Web preview: hit-test and dispatch a DOM click
     const cursor = cursorRef.current
     if (cursor) cursor.style.pointerEvents = 'none'
     const el = document.elementFromPoint(x, y)
@@ -140,12 +146,21 @@ export function DesktopMode({
       const s = sticks.current
 
       if (s) {
-        pos.current.x += expo(s.lx) * CURSOR_MAX_SPEED * dt
-        pos.current.y += expo(s.ly) * CURSOR_MAX_SPEED * dt
+        const dx = expo(s.lx) * CURSOR_MAX_SPEED * dt
+        const dy = expo(s.ly) * CURSOR_MAX_SPEED * dt
+
+        if (isNative()) {
+          // Drive the REAL Windows cursor + wheel through the Rust core
+          if (Math.abs(dx) > 0.2 || Math.abs(dy) > 0.2) nativeMoveCursor(dx, dy)
+          if (Math.abs(s.ry) > 0.05) nativeScroll(-expo(s.ry) * 3)
+        }
+
+        pos.current.x += dx
+        pos.current.y += dy
         pos.current.x = Math.max(0, Math.min(window.innerWidth - 2, pos.current.x))
         pos.current.y = Math.max(0, Math.min(window.innerHeight - 2, pos.current.y))
 
-        if (scrollRef.current && Math.abs(s.ry) > 0.05) {
+        if (!isNative() && scrollRef.current && Math.abs(s.ry) > 0.05) {
           scrollRef.current.scrollTop += expo(s.ry) * SCROLL_SPEED * dt
         }
       }

@@ -62,6 +62,19 @@ function migrate(db: Database.Database) {
     );
   `)
 
+  // v3: content taste learning — feedback on shows/movies surfaced in the discovery banner
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS content_feedback (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      content_id TEXT NOT NULL,                     -- e.g. tvmaze:123
+      title TEXT NOT NULL DEFAULT '',
+      verdict TEXT NOT NULL,                        -- opened | dismissed
+      genres TEXT NOT NULL DEFAULT '[]',            -- JSON array of genre strings
+      ts INTEGER NOT NULL DEFAULT (unixepoch())
+    );
+    CREATE INDEX IF NOT EXISTS idx_content_feedback ON content_feedback(content_id, ts);
+  `)
+
   // v2: wide cinematic banner artwork for the hero carousel
   const cols = db.prepare(`PRAGMA table_info(apps)`).all() as Array<{ name: string }>
   if (!cols.some((c) => c.name === 'banner')) {

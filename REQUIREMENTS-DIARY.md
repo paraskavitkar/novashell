@@ -55,18 +55,35 @@ Controller-first everything.
 - [x] Desktop/app mode: virtual mouse + simulated app frame — TESTED ✓
 - [x] "Return to Windows" exit action (splash; real exit = native layer)
 
-### Known issues / polish backlog
-- [ ] Library list: focused row auto-scroll added — retest after next session
-- [ ] Volume HUD overlaps Quick Settings slider visually (minor)
-- [ ] YouTube TV: row virtualization if subscriptions grow large
-- [ ] Settings screen for managing YouTube channel subscriptions (API supports it; no UI yet)
+### DESIGN OVERHAUL (2026-07-05 user feedback — CRITICAL)
+- [x] User REJECTS "neon AI crap": no glow rings, no cyan glow, no gradient blobs
+- [x] Minimalist premium theme shipped: warm near-black, hairline borders, restrained accent
+- [x] Focus state fixed: GPU-composited (.tile-focus scale + double hairline ring), no glow — TESTED ✓
+- [x] DISCOVERY BANNER SHIPPED — TESTED ✓: home rebuilt around full-bleed 62vh auto-rotating
+      carousel of trending shows (TVmaze, no key needed), ken-burns + crossfade, thin segment
+      progress bars (pause while focused), contextual hints (A Watch / X Not interested).
+      Genre taste learning VERIFIED: opened anime → anime jumped to top w/ "Because you watch X";
+      dismissed item removed instantly + genres downweighted. Test feedback rows cleaned after.
+      Anime→Crunchyroll, Amazon→Prime, YouTube mapping; max 3 items/service for diversity.
+      Old "Suggested for You" app row REMOVED per user (app-suggestion engine still in DB/API).
+      Gotcha fixed: banner needed shrink-0 inside flex scroll column (was collapsing to 0 height).
+- [x] Cinematic wide banner art generated for services (youtube, prime, crunchyroll, spotify, steam, brave)
+- [x] DB migrations: v2 `banner` column; v3 `content_feedback` table
 
-### Native layer (future — Tauri; documented, not buildable in v0 sandbox)
-- Real process launching (steam://, com.epicgames.launcher://, exe paths, Brave with URL)
-- Real mouse/keyboard injection (enigo)
-- Global Xbox-button hook, global keyboard-key return hook
-- System volume control
-- Brave-profile history import for better recommendations
+### NATIVE-FIRST MANDATE (user insists: full native software, not web-first)
+- [ ] Ship as Tauri desktop app scaffold IN THIS PROJECT (src-tauri/): Rust shell, WebView2 UI
+- [ ] Rust commands: process launch (steam://, epic://, exe, Brave), enigo input injection,
+      global gamepad hook (Guide button), system volume (Windows Core Audio)
+- [ ] Local SQLite lives with the app (same schema); UI served from built static assets — zero server
+- [ ] Build instructions for user's Windows PC (download ZIP → pnpm tauri build)
+- User has offered full PC access; v0 sandbox cannot execute on their PC — deliverable is a
+  ready-to-build native project, not a hosted web app.
+
+### Known issues / polish backlog
+- [x] Library list: focused row auto-scroll — RETESTED ✓
+- [x] Volume HUD overlaps Quick Settings slider — fixed (suppressed while panel open)
+- [ ] YouTube TV: row virtualization if subscriptions grow large
+- [x] YouTube channels API (add by @handle w/ resolution, remove) — TESTED ✓; UI pending restyle
 
 ## User preferences observed
 - Wants maximal effort, long autonomous work sessions, thorough testing of every click/component

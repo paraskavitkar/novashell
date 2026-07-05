@@ -1,7 +1,8 @@
 'use client'
 
 import { useCallback, useRef, useState } from 'react'
-import type { ShellApp } from '@/lib/client'
+import type { ContentItem, ShellApp } from '@/lib/client'
+import { isNative, nativeExit, nativeLaunch, nativeSetVolume } from '@/lib/native'
 import { useShellInput } from './gamepad-context'
 import { TopBar } from './top-bar'
 import { HomeScreen } from './home-screen'
@@ -35,6 +36,7 @@ export function Shell() {
   const showVolume = useCallback((v: number) => {
     setVolume(v)
     setVolumeVisible(true)
+    nativeSetVolume(v) // real system volume in the desktop build; no-op on web
     if (volumeTimer.current) clearTimeout(volumeTimer.current)
     volumeTimer.current = setTimeout(() => setVolumeVisible(false), 1600)
   }, [])
@@ -61,11 +63,29 @@ export function Shell() {
       return
     }
     if (target === 'builtin:exit') {
-      // Native layer: restore Windows shell. Web preview: show splash.
+      // Native build: close the shell window (back to Windows). Web: splash.
+      if (isNative()) {
+        nativeExit()
+        return
+      }
       setLaunching(app)
       return
     }
+    // Native build: real launch (steam://, epic://, exe, Brave app mode).
+    // Web preview: splash stands in for the launch handoff.
+    if (isNative()) {
+      nativeLaunch(target)
+      setLaunching(app)
+      setTimeout(() => setLaunching(null), 2200)
+      return
+    }
     setLaunching(app)
+  }, [])
+
+  // Content from the discovery banner opens in the matching service.
+  // Native build: Brave app-mode window. Web preview: new tab.
+  const handleOpenContent = useCallback((item: ContentItem) => {
+    if (item.url) nativeLaunch(item.url)
   }, [])
 
   // Highest priority: Guide (Xbox) button toggles console <-> desktop from anywhere.
@@ -109,7 +129,12 @@ export function Shell() {
       {mode === 'console' ? (
         <>
           <TopBar volume={volume} />
-          <HomeScreen active={homeActive} onLaunch={handleLaunch} onOpenQuick={() => setQuickOpen(true)} />
+          <HomeScreen
+            active={homeActive}
+            onLaunch={handleLaunch}
+            onOpenContent={handleOpenContent}
+            onOpenQuick={() => setQuickOpen(true)}
+          />
         </>
       ) : null}
 

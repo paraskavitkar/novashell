@@ -40,6 +40,21 @@ export interface YouTubeRow {
   videos: YouTubeVideo[]
 }
 
+/** Trending show/movie surfaced in the discovery banner (see lib/db/content.ts) */
+export interface ContentItem {
+  id: string
+  title: string
+  image: string
+  genres: string[]
+  rating: number | null
+  summary: string
+  service: 'crunchyroll' | 'prime-video' | 'youtube' | 'web'
+  serviceLabel: string
+  url: string
+  score: number
+  reason: string
+}
+
 const fetcher = (url: string) => fetch(url).then((r) => r.json())
 
 export function useLibrary() {
@@ -62,6 +77,29 @@ export function useYouTubeFeed() {
     dedupingInterval: 5 * 60_000,
   })
   return { rows: data?.rows ?? [], isLoading, error }
+}
+
+export function useTrendingContent() {
+  const { data, isLoading } = useSWR<{ items: ContentItem[] }>('/api/content', fetcher, {
+    revalidateOnFocus: false,
+    refreshInterval: 30 * 60_000,
+    dedupingInterval: 10 * 60_000,
+  })
+  return { content: data?.items ?? [], isLoading }
+}
+
+export async function sendContentFeedback(
+  item: Pick<ContentItem, 'id' | 'title' | 'genres'>,
+  verdict: 'opened' | 'dismissed',
+) {
+  await fetch('/api/content', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ content_id: item.id, title: item.title, genres: item.genres, verdict }),
+  })
+  if (verdict === 'dismissed') {
+    await globalMutate('/api/content')
+  }
 }
 
 /* ---------- mutations ---------- */
