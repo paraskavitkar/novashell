@@ -7,7 +7,16 @@ on:
   push:
     branches: [master, main]
     tags: ['v*']
+    # docs and memory notes don't need a 20-min Windows build
+    paths-ignore:
+      - '**.md'
+      - 'v0_memories/**'
   workflow_dispatch:
+
+# a newer push supersedes any still-running build of the same branch
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
