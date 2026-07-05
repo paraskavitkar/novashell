@@ -66,7 +66,7 @@ export function HomeScreen({ active, onLaunch, onOpenQuick, onDesktopMode }: Hom
   // keep focused tile in view
   useEffect(() => {
     const el = tileRefs.current.get(focused.id)
-    el?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' })
+    el?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'center' })
   }, [focused.id])
 
   return (
