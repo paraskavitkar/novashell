@@ -20,8 +20,9 @@ const DEFAULT_CHANNELS: Array<{ id: string; name: string }> = [
   { id: 'UCR1IuLEqb6UEA_zQ81kwXfg', name: 'Real Engineering' },
 ]
 
-// naive in-memory cache (per server process)
-let cache: { at: number; rows: unknown } | null = null
+// naive in-memory cache (per server process), keyed by the channel list
+// so edits via /api/youtube/channels invalidate it immediately
+let cache: { at: number; key: string; rows: unknown } | null = null
 const CACHE_MS = 10 * 60_000
 
 function parseEntries(xml: string, channelId: string): Video[] {
@@ -68,11 +69,11 @@ function getChannels(): Array<{ id: string; name: string }> {
 }
 
 export async function GET() {
-  if (cache && Date.now() - cache.at < CACHE_MS) {
+  const channels = getChannels()
+  const key = channels.map((c) => c.id).join(',')
+  if (cache && cache.key === key && Date.now() - cache.at < CACHE_MS) {
     return NextResponse.json(cache.rows)
   }
-
-  const channels = getChannels()
   const results = await Promise.allSettled(
     channels.map(async (ch) => {
       const res = await fetch(
@@ -92,7 +93,7 @@ export async function GET() {
     .filter((r) => r.videos.length > 0)
 
   const payload = { rows }
-  cache = { at: Date.now(), rows: payload }
+  cache = { at: Date.now(), key, rows: payload }
   return NextResponse.json(payload)
 }
 

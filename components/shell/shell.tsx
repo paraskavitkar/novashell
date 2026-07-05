@@ -175,7 +175,8 @@ export function Shell() {
         }}
       />
 
-      <VolumeHud volume={volume} visible={volumeVisible} />
+      {/* Quick Settings already shows a volume slider — suppress the floating HUD to avoid overlap */}
+      <VolumeHud volume={volume} visible={volumeVisible && !quickOpen} />
     </div>
   )
 }
