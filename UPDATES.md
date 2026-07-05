@@ -53,6 +53,10 @@ gh run view <run-id> --repo paraskavitkar/novashell --log-failed  # debug failur
 
 Builds take ~15–25 min (Rust cold compile; cached runs are faster).
 
+Note: v0's GitHub token can read runs and push code but CANNOT cancel runs
+(HTTP 403) — the workflow's `concurrency` block handles superseded builds
+automatically instead.
+
 ## For the user (how to get updates)
 
 1. Go to **github.com/paraskavitkar/novashell → Actions** → newest green run →
