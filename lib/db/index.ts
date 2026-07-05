@@ -75,6 +75,22 @@ function migrate(db: Database.Database) {
     CREATE INDEX IF NOT EXISTS idx_content_feedback ON content_feedback(content_id, ts);
   `)
 
+  // v4: imported watch history (Brave profile import via native layer)
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS watch_history (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      service TEXT NOT NULL,                        -- crunchyroll | prime-video | youtube
+      series TEXT NOT NULL,                         -- normalized series/show title
+      episode TEXT NOT NULL DEFAULT '',             -- episode label if parseable
+      url TEXT NOT NULL,                            -- deep link back to the exact page
+      title_raw TEXT NOT NULL DEFAULT '',           -- original page title
+      watched_at INTEGER NOT NULL,                  -- unix seconds of the visit
+      UNIQUE(url, watched_at)
+    );
+    CREATE INDEX IF NOT EXISTS idx_watch_service ON watch_history(service, watched_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_watch_series ON watch_history(series, watched_at DESC);
+  `)
+
   // v2: wide cinematic banner artwork for the hero carousel
   const cols = db.prepare(`PRAGMA table_info(apps)`).all() as Array<{ name: string }>
   if (!cols.some((c) => c.name === 'banner')) {

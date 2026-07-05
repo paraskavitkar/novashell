@@ -11,21 +11,23 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   recordUsage,
   sendContentFeedback,
+  useContinueWatching,
   useLibrary,
   useTrendingContent,
   type ContentItem,
+  type ContinueWatchingItem,
   type ShellApp,
 } from '@/lib/client'
 import { useShellInput } from './gamepad-context'
 import { TileIcon } from './tile-icon'
 import { ButtonHints } from './button-hints'
 import { DiscoveryBanner } from './discovery-banner'
+import { ContinueWatchingCard } from './continue-watching-card'
 
-interface RowData {
-  id: string
-  label: string
-  items: ShellApp[]
-}
+/** A home row is either app tiles or continue-watching cards */
+type RowData =
+  | { id: string; label: string; kind: 'apps'; items: ShellApp[] }
+  | { id: 'continue'; label: string; kind: 'continue'; items: ContinueWatchingItem[] }
 
 interface HomeScreenProps {
   active: boolean
@@ -46,15 +48,20 @@ const BANNER_ROW = -1
 export function HomeScreen({ active, onLaunch, onOpenContent, onOpenQuick }: HomeScreenProps) {
   const { apps, isLoading } = useLibrary()
   const { content } = useTrendingContent()
+  const { items: continueItems } = useContinueWatching()
 
   const rows: RowData[] = useMemo(() => {
     const out: RowData[] = []
+    // Continue Watching first — resume where you left off (from Brave history import)
+    if (continueItems.length > 0) {
+      out.push({ id: 'continue', label: 'Continue Watching', kind: 'continue', items: continueItems })
+    }
     for (const cat of ['games', 'media', 'apps', 'system'] as const) {
       const items = apps.filter((a) => a.category === cat && !a.hidden)
-      if (items.length > 0) out.push({ id: cat, label: CATEGORY_LABEL[cat], items })
+      if (items.length > 0) out.push({ id: cat, label: CATEGORY_LABEL[cat], kind: 'apps', items })
     }
     return out
-  }, [apps])
+  }, [apps, continueItems])
 
   const hasBanner = content.length > 0
   const [rowIndex, setRowIndex] = useState(0) // BANNER_ROW = banner, 0..n = tile rows
@@ -67,7 +74,9 @@ export function HomeScreen({ active, onLaunch, onOpenContent, onOpenQuick }: Hom
   const onBanner = hasBanner && rowIndex === BANNER_ROW
   const row = onBanner ? null : rows[safeRow]
   const colIndex = row ? Math.min(cols[row.id] ?? 0, row.items.length - 1) : 0
-  const focused = row?.items[colIndex] ?? null
+  const focusedApp = row?.kind === 'apps' ? row.items[colIndex] : null
+  const focusedContinue = row?.kind === 'continue' ? row.items[colIndex] : null
+  const focusedKey = focusedApp?.id ?? focusedContinue?.url ?? null
   const activeContent = content[Math.min(bannerIndex, Math.max(0, content.length - 1))]
 
   useShellInput(
@@ -103,7 +112,7 @@ export function HomeScreen({ active, onLaunch, onOpenContent, onOpenQuick }: Hom
         }
       }
 
-      if (!row || !focused) return false
+      if (!row || !focusedKey) return false
       switch (action) {
         case 'up':
           if (safeRow === 0 && hasBanner) setRowIndex(BANNER_ROW)
@@ -119,8 +128,25 @@ export function HomeScreen({ active, onLaunch, onOpenContent, onOpenQuick }: Hom
           setCols((c) => ({ ...c, [row.id]: Math.min(row.items.length - 1, colIndex + 1) }))
           return true
         case 'accept':
-          recordUsage(focused.id, 'launch')
-          onLaunch(focused)
+          if (focusedApp) {
+            recordUsage(focusedApp.id, 'launch')
+            onLaunch(focusedApp)
+          } else if (focusedContinue) {
+            // resume: deep-link back to the exact episode page in its service
+            onOpenContent({
+              id: `history:${focusedContinue.series}`,
+              title: focusedContinue.series,
+              image: '',
+              genres: [],
+              rating: null,
+              summary: '',
+              service: focusedContinue.service,
+              serviceLabel: focusedContinue.serviceLabel,
+              url: focusedContinue.url,
+              score: 0,
+              reason: 'Continue watching',
+            })
+          }
           return true
         case 'start':
           onOpenQuick()
@@ -139,10 +165,10 @@ export function HomeScreen({ active, onLaunch, onOpenContent, onOpenQuick }: Hom
       scrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' })
       return
     }
-    if (!focused || !row) return
-    const el = tileRefs.current.get(`${row.id}:${focused.id}`)
+    if (!focusedKey || !row) return
+    const el = tileRefs.current.get(`${row.id}:${focusedKey}`)
     el?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'center' })
-  }, [focused?.id, row?.id, onBanner])
+  }, [focusedKey, row?.id, onBanner])
 
   // When content first arrives, let the banner be the initial focus
   useEffect(() => {
@@ -188,7 +214,37 @@ export function HomeScreen({ active, onLaunch, onOpenContent, onOpenQuick }: Hom
                   {r.label}
                 </h2>
                 <div className="no-scrollbar flex gap-3.5 overflow-x-auto px-1 py-2.5">
-                  {r.items.map((app, ci) => {
+                  {r.kind === 'continue'
+                    ? r.items.map((item, ci) => (
+                        <ContinueWatchingCard
+                          key={item.url}
+                          ref={(el) => {
+                            const k = `${r.id}:${item.url}`
+                            if (el) tileRefs.current.set(k, el)
+                            else tileRefs.current.delete(k)
+                          }}
+                          item={item}
+                          focused={rowFocused && ci === colIndex}
+                          onOpen={() => {
+                            setRowIndex(ri)
+                            setCols((c) => ({ ...c, [r.id]: ci }))
+                            onOpenContent({
+                              id: `history:${item.series}`,
+                              title: item.series,
+                              image: '',
+                              genres: [],
+                              rating: null,
+                              summary: '',
+                              service: item.service,
+                              serviceLabel: item.serviceLabel,
+                              url: item.url,
+                              score: 0,
+                              reason: 'Continue watching',
+                            })
+                          }}
+                        />
+                      ))
+                    : r.items.map((app, ci) => {
                     const isFocused = rowFocused && ci === colIndex
                     const isGame = app.category === 'games'
                     return (

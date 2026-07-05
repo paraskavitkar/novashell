@@ -1,4 +1,5 @@
 import { getDb } from './index'
+import { getWatchedSeries } from './watch-history'
 
 /**
  * Content discovery engine.
@@ -79,6 +80,44 @@ export function recordContentFeedback(input: {
   db.prepare(
     `INSERT INTO content_feedback (content_id, title, verdict, genres) VALUES (?, ?, ?, ?)`,
   ).run(input.content_id, input.title, input.verdict, JSON.stringify(input.genres))
+}
+
+// ---- watch-history taste (cached genre lookups) -----------------------------
+
+/**
+ * Resolve watched series (from Brave history import) to TVmaze genres.
+ * Each watched series contributes its genres to the taste profile, weighted by
+ * engagement (visit count, capped). Results cached: series names rarely change.
+ */
+let historyTasteCache: { key: string; weights: Record<string, number>; watched: Set<string> } | null =
+  null
+
+async function getHistoryTaste(): Promise<{ weights: Record<string, number>; watched: Set<string> }> {
+  const series = getWatchedSeries(12)
+  const key = series.map((s) => `${s.series}:${s.visits}`).join('|')
+  if (historyTasteCache && historyTasteCache.key === key) return historyTasteCache
+
+  const weights: Record<string, number> = {}
+  const watched = new Set<string>()
+
+  await Promise.all(
+    series.map(async ({ series: name, visits }) => {
+      try {
+        const res = (await fetchJson(
+          `https://api.tvmaze.com/singlesearch/shows?q=${encodeURIComponent(name)}`,
+        )) as TvmazeShow | null
+        if (!res) return
+        watched.add(res.name.toLowerCase())
+        const engagement = Math.min(visits, 6) / 2 // 0.5 .. 3
+        for (const g of res.genres) weights[g] = (weights[g] ?? 0) + engagement
+      } catch {
+        /* unmatched series — fine */
+      }
+    }),
+  )
+
+  historyTasteCache = { key, weights, watched }
+  return historyTasteCache
 }
 
 // ---- source fetching (cached) ----------------------------------------------
@@ -177,11 +216,16 @@ function stripHtml(html: string): string {
 // ---- public API --------------------------------------------------------------
 
 export async function getTrendingForTaste(limit = 8): Promise<ContentItem[]> {
-  const [shows, weights, dismissed] = await Promise.all([
+  const [shows, feedbackWeights, dismissed, historyTaste] = await Promise.all([
     fetchShowPool(),
     Promise.resolve(getGenreWeights()),
     Promise.resolve(getDismissedContentIds()),
+    getHistoryTaste(),
   ])
+
+  // Merge: explicit feedback (opened/dismissed in shell) + imported watch history
+  const weights: Record<string, number> = { ...historyTaste.weights }
+  for (const [g, w] of Object.entries(feedbackWeights)) weights[g] = (weights[g] ?? 0) + w
 
   const hasTaste = Object.keys(weights).length > 0
 
@@ -191,11 +235,16 @@ export async function getTrendingForTaste(limit = 8): Promise<ContentItem[]> {
       const base = s.rating?.average ?? 5.5
       let affinity = 0
       for (const g of s.genres) affinity += weights[g] ?? 0
-      // affinity dominates once taste exists; rating breaks ties
-      const score = affinity * 2 + base
+      const isWatched = historyTaste.watched.has(s.name.toLowerCase())
+      // shows the user already watches get a strong boost — "new episode of yours"
+      const score = affinity * 2 + base + (isWatched ? 12 : 0)
 
       const top = s.genres.find((g) => (weights[g] ?? 0) > 0)
-      const reason = hasTaste && top ? `Because you watch ${top}` : 'Trending now'
+      const reason = isWatched
+        ? 'New episode of a show you watch'
+        : hasTaste && top
+          ? `Because you watch ${top}`
+          : 'Trending now'
 
       const svc = mapService(s)
       return {

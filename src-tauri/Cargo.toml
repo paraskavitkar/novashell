@@ -13,12 +13,16 @@ tauri-plugin-shell = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 enigo = "0.2"
+# bundled: compiles SQLite in — no system dependency; used to read Brave's History file
+rusqlite = { version = "0.31", features = ["bundled"] }
 
 [target.'cfg(windows)'.dependencies]
 windows = { version = "0.58", features = [
   "Win32_Media_Audio_Endpoints",
   "Win32_System_Com",
   "Win32_UI_Input_XboxController",
+  "Win32_System_LibraryLoader",
+  "Win32_Foundation",
 ] }
 
 [profile.release]

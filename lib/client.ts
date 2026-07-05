@@ -55,6 +55,17 @@ export interface ContentItem {
   reason: string
 }
 
+/** Continue Watching entry (see lib/db/watch-history.ts) */
+export interface ContinueWatchingItem {
+  service: 'crunchyroll' | 'prime-video' | 'youtube'
+  serviceLabel: string
+  series: string
+  episode: string
+  url: string
+  watched_at: number
+  visits: number
+}
+
 const fetcher = (url: string) => fetch(url).then((r) => r.json())
 
 export function useLibrary() {
@@ -86,6 +97,14 @@ export function useTrendingContent() {
     dedupingInterval: 10 * 60_000,
   })
   return { content: data?.items ?? [], isLoading }
+}
+
+export function useContinueWatching() {
+  const { data, isLoading } = useSWR<{ items: ContinueWatchingItem[] }>('/api/history', fetcher, {
+    revalidateOnFocus: false,
+    refreshInterval: 10 * 60_000,
+  })
+  return { items: data?.items ?? [], isLoading }
 }
 
 export async function sendContentFeedback(
