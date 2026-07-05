@@ -179,3 +179,16 @@ Controller-first everything.
   Game import API tested incl. Epic id-casing bugfix + cleanup of test rows (Cyberpunk/Fortnite
   deleted). BUILD-WINDOWS.md written. tsc clean. Remaining: Tauri SQL swap (native-build-time),
   YT row virtualization (only matters at scale), YT channel manager UI.
+- 2026-07-06 (easy-install session): User asked for one-click install. DECISION: the app has API
+  routes + SQLite so static export is impossible — exe embeds the Next standalone server +
+  portable node.exe as Tauri resources; Rust boots it hidden on 127.0.0.1:3210, kills on exit
+  (RunEvent::Exit), data in %APPDATA%\NovaShell via NOVASHELL_DATA_DIR env (db path override
+  in lib/db/index.ts). Changes: next.config output:'standalone', tauri.conf frontendDist/url
+  → :3210 + bundle.resources, main.rs spawn_embedded_server + kill_embedded_server,
+  .github/workflows/build-windows.yml (windows-latest: pnpm build → prepare resources →
+  tauri build → artifact upload; version tags v* → GitHub Release w/ setup exe).
+  VERIFIED: pnpm build standalone OK; ran standalone server.js with custom data dir exactly
+  as the exe will — home 200 ✓, /api/library serves ✓, DB created in override dir ✓; dev
+  preview unaffected ✓. data/ + src-tauri/{target,resources} gitignored; DB untracked from git.
+  NOTE: GitHub repo NOT yet connected in v0 — user must connect (Settings → Git), then
+  Actions builds NovaShell-Setup automatically; `git tag v0.1.0 && git push --tags` = release link.

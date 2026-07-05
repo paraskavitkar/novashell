@@ -25,3 +25,10 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# local sqlite database (user data — never commit)
+/data/
+
+# tauri build outputs + CI-prepared embedded server resources
+/src-tauri/target/
+/src-tauri/resources/

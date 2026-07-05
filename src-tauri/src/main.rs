@@ -393,6 +393,10 @@ fn main() {
             scan_installed_games
         ])
         .setup(|app| {
+            // Boot the embedded Next.js server (bundled node.exe + standalone
+            // build under resources/app). The window URL points at :3210 and
+            // WebView2 retries until the server answers.
+            spawn_embedded_server(app.handle());
             if let Some(win) = app.get_webview_window("main") {
                 let _ = win.set_fullscreen(true);
             }
@@ -400,6 +404,68 @@ fn main() {
             guide_hook::spawn(app.handle().clone());
             Ok(())
         })
-        .run(tauri::generate_context!())
-        .expect("error while running NovaShell");
+        .build(tauri::generate_context!())
+        .expect("error while building NovaShell")
+        .run(|_app, event| {
+            if let tauri::RunEvent::Exit = event {
+                kill_embedded_server();
+            }
+        });
+}
+
+/// Launch the bundled Next.js standalone server as a hidden child process.
+/// Resources layout (prepared by CI):
+///   resources/node/node.exe          — portable Node runtime
+///   resources/app/server.js          — Next standalone entry
+///   resources/app/.next/, public/, node_modules/ — pruned server bundle
+/// User data lives in %APPDATA%\NovaShell (survives updates/reinstalls).
+fn spawn_embedded_server(app: &tauri::AppHandle) {
+    use tauri::Manager;
+
+    let Ok(resource_dir) = app.path().resource_dir() else { return };
+    let node = resource_dir.join("resources/node/node.exe");
+    let server = resource_dir.join("resources/app/server.js");
+    if !node.exists() || !server.exists() {
+        // dev mode (pnpm tauri dev): the dev server on :3000 is used instead
+        return;
+    }
+
+    let data_dir = app
+        .path()
+        .app_data_dir()
+        .unwrap_or_else(|_| std::path::PathBuf::from("."));
+    let _ = std::fs::create_dir_all(&data_dir);
+
+    let mut cmd = Command::new(node);
+    cmd.arg(server)
+        .current_dir(resource_dir.join("resources/app"))
+        .env("PORT", "3210")
+        .env("HOSTNAME", "127.0.0.1")
+        .env("NODE_ENV", "production")
+        .env("NOVASHELL_DATA_DIR", &data_dir);
+
+    // Hide the console window of the node child process
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+        cmd.creation_flags(CREATE_NO_WINDOW);
+    }
+
+    match cmd.spawn() {
+        Ok(child) => {
+            *EMBEDDED_SERVER.lock().unwrap() = Some(child);
+        }
+        Err(e) => eprintln!("NovaShell: failed to start embedded server: {e}"),
+    }
+}
+
+/// Handle to the embedded server child process; killed on shell exit.
+static EMBEDDED_SERVER: Mutex<Option<std::process::Child>> = Mutex::new(None);
+
+fn kill_embedded_server() {
+    if let Some(mut child) = EMBEDDED_SERVER.lock().unwrap().take() {
+        let _ = child.kill();
+        let _ = child.wait();
+    }
 }

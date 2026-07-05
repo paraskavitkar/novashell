@@ -1,32 +1,59 @@
-# Building Gamepad UX as a native Windows app
+# Installing NovaShell on Windows
 
-This project ships with a complete Tauri native core (`src-tauri/`). Building it on your
-Windows 10 PC produces a real `Gamepad UX.exe` — no browser, no server, instant load.
+## Easiest: download the installer (no tools needed)
 
-## One-time setup (your PC)
+This repo has a GitHub Actions workflow (`.github/workflows/build-windows.yml`) that
+builds the Windows installer automatically on GitHub's servers.
 
-1. **Install Rust** — https://rustup.rs (accept defaults; installs MSVC toolchain).
-   If prompted, install "Desktop development with C++" via the Visual Studio Build Tools installer.
-2. **Install Node.js 20+ and pnpm** — https://nodejs.org then `npm i -g pnpm`
-3. **WebView2** — already part of Windows 10/11 (nothing to do).
+1. **Connect this project to GitHub** (in v0: Settings → Git → connect a repository).
+   Every push then triggers a build automatically.
+2. On GitHub → **Actions** tab → latest "Build NovaShell Windows Installer" run →
+   download the **NovaShell-Setup** artifact.
+3. Unzip and run `NovaShell_0.1.0_x64-setup.exe`. Done — it installs per-user
+   (no admin prompt) with a Start Menu entry.
 
-## Build
+To publish a permanent download link, push a version tag:
 
 ```bash
-# in the project folder (downloaded ZIP or git clone)
+git tag v0.1.0 && git push --tags
+```
+
+That creates a GitHub **Release** with the setup exe attached — a shareable,
+permanent `https://github.com/<you>/<repo>/releases` download page.
+
+The installer is fully self-contained: it embeds the UI, the Next.js server,
+a portable Node runtime, and the Rust native core. Nothing else to install
+(WebView2 is already part of Windows 10/11).
+
+## Alternative: build locally
+
+1. **Rust** — https://rustup.rs (MSVC toolchain; install VS Build Tools "Desktop C++" if prompted)
+2. **Node.js 22+ and pnpm** — https://nodejs.org then `npm i -g pnpm`
+
+```bash
 pnpm install
-pnpm add -D @tauri-apps/cli
-pnpm tauri build
+pnpm build
+# prepare embedded server resources (same as CI, PowerShell):
+#   mkdir src-tauri/resources/app; cp -r .next/standalone/* src-tauri/resources/app
+#   mkdir src-tauri/resources/app/.next/static; cp -r .next/static/* src-tauri/resources/app/.next/static
+#   cp -r public src-tauri/resources/app/public
+#   mkdir src-tauri/resources/node; cp (Get-Command node).Source src-tauri/resources/node/node.exe
+pnpm dlx @tauri-apps/cli build
 ```
 
-Output: `src-tauri/target/release/Gamepad UX.exe` plus an installer under
-`src-tauri/target/release/bundle/`.
+Output: `src-tauri/target/release/bundle/nsis/NovaShell_..._x64-setup.exe`
 
-For development with hot reload:
+For development with hot reload: `pnpm dlx @tauri-apps/cli dev`
 
-```bash
-pnpm tauri dev
-```
+## How the exe works
+
+- On launch, the Rust core starts the embedded Next.js server (bundled portable
+  `node.exe` + standalone build) on `127.0.0.1:3210`, hidden, then opens the
+  fullscreen WebView2 window pointed at it. The server is killed on exit.
+- User data (SQLite: library, usage, taste, watch history, playback positions)
+  lives in `%APPDATA%\NovaShell` — survives updates and reinstalls, never leaves your PC.
+- Brave launches include `--remote-debugging-port=9222`, powering the CDP playback
+  monitor: real `video.currentTime` positions for Continue Watching.
 
 ## What the native build unlocks (vs the web preview)
 
@@ -38,21 +65,11 @@ pnpm tauri dev
 | Volume buttons (LB/RB) | On-screen HUD only | Real system volume |
 | Guide/Xbox button | G key in shell only | GLOBAL hook — works while gaming (XInputGetStateEx poll thread) |
 | Brave watch history import | Simulated via API | Reads your real Brave profile on every launch |
+| Playback positions (CDP) | Simulated test video | Real positions from Crunchyroll/Prime/YouTube tabs |
 | Installed game library | Manual entry | Auto-scan of Steam + Epic manifests on launch |
 | Exit to Windows | Splash | Actually closes the shell |
 
-## Architecture notes
-
-- The UI is statically exported Next.js embedded in the exe, rendered by WebView2.
-- All data stays local: SQLite at `data/gamepad-ux.db` (dev) — the same schema the
-  native build uses. Watch history, usage patterns, and taste weights never leave your PC.
-- `lib/native.ts` is the bridge: every OS action checks `isNative()` — simulation in the
-  preview, Rust command in the exe. One codebase.
-- Rust commands live in `src-tauri/src/main.rs`: `launch_target`, `move_cursor`, `click`,
-  `scroll`, `type_text`, `set_volume`, `exit_to_windows`, `read_brave_history`,
-  `scan_installed_games`, plus the background Guide-button hook.
-
 ## Autostart (optional)
 
-After building, press `Win+R` → `shell:startup` → drop a shortcut to the exe there.
+`Win+R` → `shell:startup` → drop a shortcut to NovaShell there.
 The shell opens fullscreen on boot; the Guide button summons it any time.
