@@ -48,8 +48,7 @@
 }
 
 /*
- * Console shell theme — quiet, warm near-black, minimalist premium.
- * No neon, no glow. Hairline borders + soft depth shadows only.
+ * Quiet, warm near-black theme. Hairline borders + soft depth shadows only.
  */
 :root {
   color-scheme: dark;
@@ -101,96 +100,20 @@
   }
 }
 
-/* Hide scrollbars in the 10-foot UI */
-.no-scrollbar {
-  scrollbar-width: none;
-  -ms-overflow-style: none;
+/* Ring radius for the spiral keyboard glyph circle */
+:root {
+  --ring-r: 9.5rem;
 }
-.no-scrollbar::-webkit-scrollbar {
-  display: none;
-}
-
-/*
- * Focus treatment — GPU-composited, no layout shift, no glow.
- * Transition transform + box-shadow only; both are compositor-friendly.
- */
-.tile-rest,
-.tile-focus {
-  transition:
-    transform 0.22s cubic-bezier(0.22, 1, 0.36, 1),
-    box-shadow 0.22s cubic-bezier(0.22, 1, 0.36, 1),
-    opacity 0.22s ease;
-}
-.tile-rest {
-  box-shadow: 0 0 0 1px oklch(1 0 0 / 7%);
-  opacity: 0.82;
-}
-.tile-rest:hover {
-  opacity: 1;
-}
-.tile-focus {
-  z-index: 10;
-  opacity: 1;
-  box-shadow:
-    0 0 0 2px oklch(0.145 0.004 75),
-    0 0 0 3.5px oklch(0.95 0.004 80),
-    0 20px 40px -14px oklch(0 0 0 / 75%);
-}
-
-/* Legacy alias still referenced by secondary screens (restyled to match) */
-.tile-glow {
-  box-shadow:
-    0 0 0 2px oklch(0.145 0.004 75),
-    0 0 0 3.5px oklch(0.95 0.004 80),
-    0 20px 40px -14px oklch(0 0 0 / 75%);
-}
-
-/* Gentle entrance */
-@keyframes shell-fade-up {
-  from {
-    opacity: 0;
-    transform: translateY(12px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
+@media (max-width: 767px) {
+  :root {
+    --ring-r: 8rem;
   }
 }
-.shell-fade-up {
-  animation: shell-fade-up 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
-}
 
-@keyframes hud-pop {
-  from {
-    opacity: 0;
-    transform: translateY(10px) scale(0.98);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-.hud-pop {
-  animation: hud-pop 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
-@keyframes launch-zoom {
-  from {
-    opacity: 0;
-    transform: scale(0.92);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-.launch-zoom {
-  animation: launch-zoom 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
+/* Click feedback ripple in the cursor playground */
 @keyframes click-ripple {
   from {
-    opacity: 0.5;
+    opacity: 0.6;
     transform: translate(-50%, -50%) scale(0.3);
   }
   to {
@@ -200,75 +123,4 @@
 }
 .click-ripple {
   animation: click-ripple 0.4s ease-out both;
-}
-
-/* Quiet breathing indicator (replaces glow-pulse) */
-@keyframes glow-pulse {
-  0%,
-  100% {
-    opacity: 0.35;
-  }
-  50% {
-    opacity: 0.9;
-  }
-}
-.glow-pulse {
-  animation: glow-pulse 2.4s ease-in-out infinite;
-}
-
-/* ===== Hero banner carousel ===== */
-
-/* Slow cinematic drift on the active banner image */
-@keyframes ken-burns {
-  from {
-    transform: scale(1.04) translateX(0);
-  }
-  to {
-    transform: scale(1.12) translateX(-1.5%);
-  }
-}
-.ken-burns {
-  animation: ken-burns 9s ease-out both;
-}
-
-/* Banner crossfade */
-@keyframes banner-in {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-.banner-in {
-  animation: banner-in 0.9s ease both;
-}
-
-/* Hero copy slides in slightly after the image */
-@keyframes hero-copy-in {
-  from {
-    opacity: 0;
-    transform: translateY(14px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-.hero-copy-in {
-  animation: hero-copy-in 0.6s 0.15s cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
-/* Thin progress bar fill for the active banner segment */
-@keyframes segment-fill {
-  from {
-    transform: scaleX(0);
-  }
-  to {
-    transform: scaleX(1);
-  }
-}
-.segment-fill {
-  transform-origin: left center;
-  animation: segment-fill var(--segment-ms, 8000ms) linear both;
 }
